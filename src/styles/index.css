@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 255 77 109;
+    --color-gold: 255 215 0;
+  }
+
+  body {
+    background: radial-gradient(circle at 50% 10%, #15102a 0%, #080612 100%);
+    color: #f8fafc;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom Luxury Glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-panel-gold {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(255, 107, 107, 0.04) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(255, 215, 0, 0.15);
+}
+
+.glass-panel-rose {
+  background: linear-gradient(135deg, rgba(255, 77, 109, 0.1) 0%, rgba(114, 9, 183, 0.06) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 77, 109, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(255, 77, 109, 0.2);
+}
+
+/* Glowing text gradients */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #FFF6BD 0%, #FFD700 50%, #FFA500 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-rose {
+  background: linear-gradient(135deg, #FFB3C1 0%, #FF4D6D 50%, #C9184A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-cosmic {
+  background: linear-gradient(135deg, #E0AAFF 0%, #C77DFF 40%, #7B2CBF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-romantic {
+  background: linear-gradient(135deg, #FFE5EC 0%, #FF8FA3 50%, #FF4D6D 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 3D Perspective utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* Envelope 3D Fold classes */
+.envelope-flap {
+  transform-origin: top;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.envelope-flap.open {
+  transform: rotateX(180deg);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 12, 30, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 77, 109, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 77, 109, 0.7);
+}
+
+/* Animations */
+@keyframes petalFall {
+  0% {
+    transform: translate(0, -10px) rotate(0deg) scale(0.8);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(100px, 100vh) rotate(720deg) scale(1);
+    opacity: 0;
+  }
+}
+
+.animate-petal {
+  animation: petalFall 8s linear infinite;
+}
+
+/* Glowing Aura */
+.glow-box-gold {
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.45), inset 0 0 15px rgba(255, 215, 0, 0.2);
+}
+
+.glow-box-rose {
+  box-shadow: 0 0 30px rgba(255, 77, 109, 0.5), inset 0 0 15px rgba(255, 77, 109, 0.25);
+}
+
+.glow-box-cyan {
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.45), inset 0 0 15px rgba(56, 189, 248, 0.2);
+}
