@@ -2,7 +2,7 @@ name: Deploy Gifti to GitHub Pages
 
 on:
   push:
-    branches: [master]
+    branches: ['master']
   workflow_dispatch:
 
 permissions:
@@ -11,11 +11,11 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: 'pages'
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -24,7 +24,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -33,12 +33,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build project
-        env:
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+      - name: Build production app
         run: npm run build
 
-      - name: Setup Pages
+      - name: Setup GitHub Pages
         uses: actions/configure-pages@v4
 
       - name: Upload artifact

@@ -1,0 +1,17 @@
+{
+  "short_name": "Gifti",
+  "name": "Gifti — Interactive Digital E-Gifts by AAYU SOLUTION",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎁</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./",
+  "background_color": "#090714",
+  "theme_color": "#FF4D6D",
+  "display": "standalone",
+  "orientation": "portrait"
+}
