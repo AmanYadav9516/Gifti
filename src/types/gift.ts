@@ -35,21 +35,39 @@ export type MessageTone =
   | 'deep'
   | 'short';
 
+export type MessageLength = 'short' | 'medium' | 'long';
+
+export type Relationship = 
+  | 'sister'
+  | 'brother'
+  | 'bestfriend'
+  | 'friend'
+  | 'girlfriend'
+  | 'boyfriend'
+  | 'crush'
+  | 'wife'
+  | 'husband'
+  | 'mother'
+  | 'father'
+  | 'colleague'
+  | 'special';
+
 export type Language = 'en' | 'hi';
 
 export interface GiftData {
   id: string;
   senderName: string;
   receiverName: string;
-  relationship?: string;
+  relationship?: Relationship | string;
   occasion: Occasion;
   giftType: GiftType;
   secondaryGiftType?: GiftType;
   worldTheme: WorldTheme;
   customIntroText?: string;
   message: string;
+  messageLength?: MessageLength;
   senderVoiceNote?: string; // base64 data url or sound reference
-  photos?: string[]; // base64 data urls or image links
+  photos?: string[]; // ImgBB cloud URLs
   hasMysteryEnvelope: boolean;
   hasMagicScratch: boolean;
   hasSecondGift: boolean;

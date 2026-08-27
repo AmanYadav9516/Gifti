@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Language, Occasion, GiftType, WorldTheme, MessageTone } from '../types/gift';
+import React, { createContext, useContext, useState } from 'react';
+import { Language, Occasion, GiftType, WorldTheme, MessageTone, Relationship, MessageLength } from '../types/gift';
 
 interface Translations {
   appName: string;
@@ -27,18 +27,29 @@ interface Translations {
   
   // Tones
   tones: Record<MessageTone, string>;
+
+  // Relationships
+  relationships: Record<Relationship, string>;
+
+  // Lengths
+  lengths: Record<MessageLength, string>;
   
   // Sender Studio
   senderNameLabel: string;
   senderNamePlaceholder: string;
   receiverNameLabel: string;
   receiverNamePlaceholder: string;
+  relationshipLabel: string;
+  messageLengthLabel: string;
   aiPromptLabel: string;
   aiPromptPlaceholder: string;
   aiGenerateBtn: string;
   aiGenerating: string;
   aiToneLabel: string;
   quickIdeas: string;
+  selectOptionPrompt: string;
+  optionLabel: string;
+  useThisOption: string;
   voiceNoteTitle: string;
   voiceNoteDesc: string;
   recordStart: string;
@@ -48,6 +59,7 @@ interface Translations {
   recordingActive: string;
   photosTitle: string;
   photosDesc: string;
+  uploadingToCloud: string;
   mysteryEnvelopeToggle: string;
   mysteryEnvelopeDesc: string;
   magicScratchToggle: string;
@@ -71,6 +83,7 @@ interface Translations {
   tapChocolatePrompt: string;
   listenVoiceNote: string;
   sweetMemories: string;
+  memoryCaptions: string[];
   personalLetterFrom: string;
   secondGiftAlert: string;
   openSecondGiftBtn: string;
@@ -101,9 +114,9 @@ const translations: Record<Language, Translations> = {
     stepOccasion: '1. Select Occasion',
     stepGift: '2. Choose Interactive Gift',
     stepWorld: '3. Select Cinematic Atmosphere',
-    stepMessage: '4. Heartfelt Message & AI Writer',
+    stepMessage: '4. Heartfelt Message & AI Smart Writer',
     stepVoice: '5. Voice Note (Optional)',
-    stepPhotos: '6. Memory Album (Optional)',
+    stepPhotos: '6. Memory Album with 3D VFX (Optional)',
     stepSurpriseOptions: '7. Magical Surprise Add-ons',
     
     occasions: {
@@ -146,26 +159,54 @@ const translations: Record<Language, Translations> = {
       deep: '🌌 Deep & Meaningful',
       short: '⚡ Short & Sweet',
     },
+
+    relationships: {
+      sister: '👩 Sister / बहना',
+      brother: '👨 Brother / भाई',
+      bestfriend: '🫂 Best Friend / जिगरी दोस्त',
+      friend: '🤝 Friend / दोस्त',
+      girlfriend: '💕 Girlfriend / प्रेमिका',
+      boyfriend: '💙 Boyfriend / प्रेमी',
+      crush: '✨ Crush / क्रश',
+      wife: '💍 Wife / धर्मपत्नी',
+      husband: '👑 Husband / पति',
+      mother: '🌸 Mother / माँ',
+      father: '🌟 Father / पापा',
+      colleague: '💼 Colleague / सहकर्मी',
+      special: '❤️ Someone Special / कोई खास',
+    },
+
+    lengths: {
+      short: '⚡ Short (2-3 lines)',
+      medium: '📝 Medium (4-5 lines)',
+      long: '📜 Long Story (6-8 lines)',
+    },
     
     senderNameLabel: 'Your Name (Sender)',
     senderNamePlaceholder: 'e.g. Aman, Priya, Rahul',
     receiverNameLabel: "Recipient's Name",
     receiverNamePlaceholder: 'e.g. Diya, Rohan, Sister',
+    relationshipLabel: 'Your Relationship With Them:',
+    messageLengthLabel: 'Desired Message Length:',
     aiPromptLabel: 'AI Smart Message Writer (Hindi / English)',
-    aiPromptPlaceholder: 'e.g. "My sister always fights for TV remote but she is my biggest supporter" or "Happy 21st birthday to my best friend"',
-    aiGenerateBtn: '✨ Generate with Gemini AI',
-    aiGenerating: 'Writing heartfelt words...',
+    aiPromptPlaceholder: 'e.g. "She is always stealing my food and remote but I care for her deeply"',
+    aiGenerateBtn: '✨ Generate 3 Unique Variations with AI',
+    aiGenerating: 'Crafting 3 unique heartfelt messages...',
     aiToneLabel: 'Select Tone / Vibe:',
     quickIdeas: 'Quick Ideas:',
+    selectOptionPrompt: 'Choose your favorite variation from below:',
+    optionLabel: 'Option',
+    useThisOption: 'Use This Message ✓',
     voiceNoteTitle: 'Voice Message inside the Gift',
-    voiceNoteDesc: 'Record 10–30s of your real voice. When they open the gift, hearing your voice will melt their heart.',
+    voiceNoteDesc: 'Record 10–30s of your real voice. Hearing your voice will melt their heart.',
     recordStart: 'Start Recording Voice',
     recordStop: 'Stop Recording',
     recordPlay: 'Listen Preview',
     recordDelete: 'Remove Voice Note',
     recordingActive: 'Recording... Speak now 🎙️',
-    photosTitle: 'Cinematic Memory Album (1–5 Photos)',
-    photosDesc: 'Upload photos of your favorite memories. They will glide smoothly across the screen like a movie.',
+    photosTitle: '3D Memory Album with RGB Aura (1–5 Photos)',
+    photosDesc: 'Upload photos. They will be uploaded in HD via ImgBB and glide with 3D flying & flash animations.',
+    uploadingToCloud: 'Uploading in HD to Cloud... ✨',
     mysteryEnvelopeToggle: '💌 Add Wax-Sealed Mystery Envelope First',
     mysteryEnvelopeDesc: 'Receiver must break the glowing wax seal before seeing the main surprise.',
     magicScratchToggle: '✨ Add Magic Finger-Scratch Glow Reveal',
@@ -188,12 +229,20 @@ const translations: Record<Language, Translations> = {
     tapChocolatePrompt: 'Tap the chocolate for a sweet bite 🍫',
     listenVoiceNote: 'Tap to hear their voice message 🔊',
     sweetMemories: 'Cherished Moments & Memories 📸',
+    memoryCaptions: [
+      'Do you remember this magical moment? ✨',
+      'One of our most unforgettable memories together ❤️',
+      'Look how bright and happy your smile is here! 😊',
+      'Time flies, but this moment stays etched in my heart 📸',
+      'Forever grateful for memories like this with you 💖',
+      'Seeing this always brings the biggest smile to my face 🌟',
+    ],
     personalLetterFrom: 'A Personal Message For You',
     secondGiftAlert: 'Did you really think that was all? 😏',
     openSecondGiftBtn: 'Open Second Surprise ✨',
     
     shareTitle: 'Your Gift is Ready to Share! 🎁',
-    shareSubtitle: 'Send this magical link to your loved one. It opens instantly in any browser without needing to download anything!',
+    shareSubtitle: 'Ultra-light, lightning-fast link ready for WhatsApp! Opens instantly in any mobile browser without downloads.',
     shareWhatsApp: 'Share on WhatsApp 📲',
     shareSMS: 'Send via SMS 💬',
     copyLink: 'Copy Gift Link 🔗',
@@ -216,9 +265,9 @@ const translations: Record<Language, Translations> = {
     stepOccasion: '१. अवसर चुनें (Occasion)',
     stepGift: '२. मनपसंद गिफ्ट चुनें',
     stepWorld: '३. जादुई माहौल (World) चुनें',
-    stepMessage: '४. दिल से संदेश व AI राइटर',
+    stepMessage: '४. दिल से संदेश व AI स्मार्ट राइटर',
     stepVoice: '५. अपनी आवाज़ में संदेश (वैकल्पिक)',
-    stepPhotos: '६. यादों का एल्बम (फोटो)',
+    stepPhotos: '६. यादों का 3D फोटो एल्बम (RGB ग्लो)',
     stepSurpriseOptions: '७. जादुई सरप्राइज फीचर्स',
     
     occasions: {
@@ -261,26 +310,54 @@ const translations: Record<Language, Translations> = {
       deep: '🌌 गहरा और अर्थपूर्ण',
       short: '⚡ छोटा और मीठा',
     },
+
+    relationships: {
+      sister: '👩 प्यारी बहन (Sister)',
+      brother: '👨 लाडला भाई (Brother)',
+      bestfriend: '🫂 बेस्ट फ्रेंड (Best Friend)',
+      friend: '🤝 सच्चा दोस्त (Friend)',
+      girlfriend: '💕 गर्लफ्रेंड (Girlfriend)',
+      boyfriend: '💙 बॉयफ्रेंड (Boyfriend)',
+      crush: '✨ क्रश (Crush)',
+      wife: '💍 धर्मपत्नी (Wife)',
+      husband: '👑 पतिदेव (Husband)',
+      mother: '🌸 पूज्य माता जी (Mother)',
+      father: '🌟 आदरणीय पिताजी (Father)',
+      colleague: '💼 साथी (Colleague)',
+      special: '❤️ कोई बहुत खास (Special)',
+    },
+
+    lengths: {
+      short: '⚡ छोटा (2-3 पंक्तियां)',
+      medium: '📝 मध्यम (4-5 पंक्तियां)',
+      long: '📜 लंबा / कहानी (6-8 पंक्तियां)',
+    },
     
     senderNameLabel: 'आपका नाम (भेजने वाला)',
     senderNamePlaceholder: 'उदा. अमन, राहुल, प्रिया',
     receiverNameLabel: 'पाने वाले का नाम',
     receiverNamePlaceholder: 'उदा. दीया, गुड़िया, भाई',
+    relationshipLabel: 'उनके साथ आपका रिश्ता:',
+    messageLengthLabel: 'संदेश की लंबाई चुनें:',
     aiPromptLabel: 'AI स्मार्ट मैसेज राइटर (हिन्दी / English)',
-    aiPromptPlaceholder: 'उदा. "मेरी बहन मुझसे बहुत लड़ती है लेकिन मैं उससे बहुत प्यार करता हूँ" या "मेरे बेस्ट फ्रेंड को जन्मदिन की बधाई"',
-    aiGenerateBtn: '✨ Gemini AI से दिल छूने वाला संदेश लिखें',
-    aiGenerating: 'खूबसूरत शब्द लिखे जा रहे हैं...',
+    aiPromptPlaceholder: 'उदा. "मेरी बहन मुझसे टीवी रिमोट के लिए लड़ती है पर मैं उससे बहुत प्यार करता हूँ"',
+    aiGenerateBtn: '✨ Gemini AI से ३ अनोखे विकल्प बनाएं',
+    aiGenerating: '३ अलग-अलग दिल छूने वाले विकल्प तैयार हो रहे हैं...',
     aiToneLabel: 'संदेश का मिज़ाज (Tone) चुनें:',
     quickIdeas: 'त्वरित विचार:',
+    selectOptionPrompt: 'नीचे दिए गए ३ विकल्पों में से अपना पसंदीदा चुनें:',
+    optionLabel: 'विकल्प',
+    useThisOption: 'यह विकल्प चुनें ✓',
     voiceNoteTitle: 'गिफ्ट में अपनी आवाज़ का जादू जोड़ें',
-    voiceNoteDesc: '10–30 सेकंड का वॉयस मैसेज रिकॉर्ड करें। जब वो गिफ्ट खोलेंगे तो आपकी आवाज़ सुनकर खुश हो जाएंगे।',
+    voiceNoteDesc: '10–30 सेकंड का वॉयस मैसेज रिकॉर्ड करें। आपकी आवाज़ सुनकर उनका दिल खुश हो जाएगा।',
     recordStart: 'आवाज़ रिकॉर्ड करना शुरू करें',
     recordStop: 'रिकॉर्डिंग रोकें',
     recordPlay: 'सुनकर देखें',
     recordDelete: 'रिकॉर्डिंग हटाएं',
     recordingActive: 'रिकॉर्डिंग जारी है... बोलिए 🎙️',
-    photosTitle: 'यादों का फोटो एल्बम (1–5 फोटो)',
-    photosDesc: 'अपनी पसंदीदा तस्वीरें जोड़ें जो स्क्रीन पर एक खूबसूरत फिल्म की तरह चलेंगी।',
+    photosTitle: '3D यादों का फोटो एल्बम (RGB ग्लो व फ्लैश)',
+    photosDesc: 'फोटो जोड़ें। ये ImgBB पर HD में अपलोड होंगी और स्क्रीन पर उड़ते हुए 3D इफ़ेक्ट में दिखेंगी।',
+    uploadingToCloud: 'क्लाउड (ImgBB) पर HD में अपलोड हो रहा है... ✨',
     mysteryEnvelopeToggle: '💌 पहले सीलबंद रहस्यमयी लिफाफा दिखाएं',
     mysteryEnvelopeDesc: 'गिफ्ट देखने से पहले मोहर तोड़कर लिफाफा खोलना होगा।',
     magicScratchToggle: '✨ जादुई उंगली से चमकती रोशनी का रहस्य जोड़ें',
@@ -303,12 +380,20 @@ const translations: Record<Language, Translations> = {
     tapChocolatePrompt: 'चॉकलेट पर टैप करें और मिठास चखें 🍫',
     listenVoiceNote: 'उनकी आवाज़ सुनने के लिए टैप करें 🔊',
     sweetMemories: 'अनमोल यादें व खूबसूरत लम्हे 📸',
+    memoryCaptions: [
+      'क्या आपको ये खूबसूरत पल याद है? ✨',
+      'हमारी सबसे यादगार और अनमोल यादों में से एक ❤️',
+      'देखो तुम इस तस्वीर में कितने प्यारे लग रहे हो! 😊',
+      'वक्त बीत गया, पर ये लम्हा हमेशा दिल के करीब रहेगा 📸',
+      'इस खूबसूरत याद के लिए दिल से शुक्रिया 💖',
+      'इस तस्वीर को देखकर हमेशा चेहरे पर मुस्कान आ जाती है 🌟',
+    ],
     personalLetterFrom: 'आपके लिए एक खास निजी संदेश',
     secondGiftAlert: 'क्या आपको लगा सिर्फ इतना ही था? 😏',
     openSecondGiftBtn: 'दूसरा सरप्राइज खोलें ✨',
     
     shareTitle: 'आपका जादुई गिफ्ट तैयार है! 🎁',
-    shareSubtitle: 'यह लिंक अपने प्रियजन को भेजें। वे बिना कोई ऐप डाउनलोड किए किसी भी ब्राउज़र में इसे तुरंत देख सकते हैं!',
+    shareSubtitle: 'यह सुपर-फास्ट छोटा लिंक सीधे WhatsApp पर भेजें। यह बिना किसी ऐप के तुरंत खुलेगा!',
     shareWhatsApp: 'WhatsApp पर भेजें 📲',
     shareSMS: 'SMS द्वारा भेजें 💬',
     copyLink: 'गिफ्ट लिंक कॉपी करें 🔗',

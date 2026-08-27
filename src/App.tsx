@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GiftData, Occasion, GiftType, WorldTheme } from './types/gift';
+import { GiftData, Occasion, GiftType, WorldTheme, Relationship, MessageLength } from './types/gift';
 import { useLanguage } from './context/LanguageContext';
 import { useAudio } from './context/AudioContext';
 import { Header } from './components/common/Header';
@@ -34,6 +34,7 @@ export const App: React.FC = () => {
   // Form State
   const [senderName, setSenderName] = useState('');
   const [receiverName, setReceiverName] = useState('');
+  const [relationship, setRelationship] = useState<Relationship>('sister');
   const [occasion, setOccasion] = useState<Occasion>('rakhi');
   const [giftType, setGiftType] = useState<GiftType>('rose');
   const [worldTheme, setWorldTheme] = useState<WorldTheme>('galaxy');
@@ -70,6 +71,7 @@ export const App: React.FC = () => {
     id: 'gift_' + Date.now(),
     senderName: senderName || 'Someone who loves you',
     receiverName: receiverName || 'Dearest One',
+    relationship,
     occasion,
     giftType,
     secondaryGiftType: hasSecondGift ? secondaryGiftType : undefined,
@@ -193,10 +195,12 @@ export const App: React.FC = () => {
           {/* STEP 3: WORLD THEME */}
           <WorldSelector selected={worldTheme} onSelect={setWorldTheme} />
 
-          {/* STEP 4: AI SMART MESSAGE WRITER */}
+          {/* STEP 4: AI SMART MESSAGE WRITER (WITH 3 VARIATIONS & CONTEXT) */}
           <AIMessageWriter
             senderName={senderName}
             receiverName={receiverName}
+            relationship={relationship}
+            onRelationshipChange={setRelationship}
             occasion={occasion}
             message={message}
             onMessageChange={setMessage}
@@ -208,7 +212,7 @@ export const App: React.FC = () => {
             onSaveVoiceNote={setVoiceNoteUrl}
           />
 
-          {/* STEP 6: PHOTO MEMORIES */}
+          {/* STEP 6: PHOTO MEMORIES (IMGBB HD CLOUD UPLOAD & 3D VFX) */}
           <PhotoUploader photos={photos} onPhotosChange={setPhotos} />
 
           {/* STEP 7: SURPRISE ADD-ONS */}
