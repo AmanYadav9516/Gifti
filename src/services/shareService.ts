@@ -1,10 +1,28 @@
 import LZString from 'lz-string';
 import QRCode from 'qrcode';
 import { GiftData } from '../types/gift';
+import { saveGiftToCloud, fetchGiftFromCloud } from './cloudGiftService';
 
-export function encodeGiftToUrl(gift: GiftData): string {
+/**
+ * Creates an ultra-short, reliable cloud-backed link for WhatsApp (e.g. https://.../?id=k9x2qp)
+ */
+export async function createShortGiftUrl(gift: GiftData): Promise<string> {
+  const origin = window.location.origin + window.location.pathname;
   try {
-    // Strip unnecessary runtime data to keep URL ultra-short
+    const cloudId = await saveGiftToCloud(gift);
+    if (cloudId) {
+      return `${origin}?id=${cloudId}`;
+    }
+  } catch (err) {
+    console.warn('Cloud save failed, generating compact query:', err);
+  }
+
+  // Fallback to compact compressed URL
+  return encodeGiftToFallbackUrl(gift);
+}
+
+export function encodeGiftToFallbackUrl(gift: GiftData): string {
+  try {
     const lightweightGift = {
       s: gift.senderName,
       r: gift.receiverName,
@@ -15,7 +33,7 @@ export function encodeGiftToUrl(gift: GiftData): string {
       w: gift.worldTheme,
       m: gift.message,
       vn: gift.senderVoiceNote,
-      p: gift.photos, // Now tiny ImgBB URLs
+      p: gift.photos,
       e: gift.hasMysteryEnvelope ? 1 : 0,
       sc: gift.hasMagicScratch ? 1 : 0,
       s2: gift.hasSecondGift ? 1 : 0,
@@ -24,61 +42,84 @@ export function encodeGiftToUrl(gift: GiftData): string {
     const json = JSON.stringify(lightweightGift);
     const compressed = LZString.compressToEncodedURIComponent(json);
     const origin = window.location.origin + window.location.pathname;
-    return `${origin}#g=${compressed}`;
-  } catch (err) {
-    console.error('Failed to compress gift:', err);
-    return `${window.location.origin + window.location.pathname}#g_raw=${encodeURIComponent(JSON.stringify(gift))}`;
+    return `${origin}?g=${compressed}`;
+  } catch {
+    return window.location.href;
   }
 }
 
-export function decodeGiftFromUrl(): GiftData | null {
+/**
+ * Parses gift data from the current browser URL (supports ?id=, #id=, ?g=, #g=)
+ */
+export async function loadGiftFromCurrentUrl(): Promise<GiftData | null> {
+  const searchParams = new URLSearchParams(window.location.search);
+  const hash = window.location.hash;
+
+  // 1. Check for Cloud ID parameter (?id= or #id=)
+  const idFromSearch = searchParams.get('id');
+  if (idFromSearch) {
+    return await fetchGiftFromCloud(idFromSearch);
+  }
+
+  if (hash.startsWith('#id=')) {
+    const idFromHash = hash.replace('#id=', '');
+    return await fetchGiftFromCloud(idFromHash);
+  }
+
+  // 2. Check for compressed data (?g= or #g= or #gift=)
+  const gFromSearch = searchParams.get('g');
+  if (gFromSearch) {
+    return decodeFromCompressedString(gFromSearch);
+  }
+
+  if (hash.startsWith('#g=')) {
+    return decodeFromCompressedString(hash.replace('#g=', ''));
+  }
+
+  if (hash.startsWith('#gift=')) {
+    return decodeFromCompressedString(hash.replace('#gift=', ''));
+  }
+
+  return null;
+}
+
+function decodeFromCompressedString(compressed: string): GiftData | null {
   try {
-    const hash = window.location.hash;
-    if (!hash) return null;
+    const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
+    if (!decompressed) return null;
+    const parsed = JSON.parse(decompressed);
 
-    if (hash.startsWith('#g=')) {
-      const compressed = hash.replace('#g=', '');
-      const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
-      if (!decompressed) return null;
-      const lw = JSON.parse(decompressed);
-
+    // Support lightweight format
+    if (parsed.s || parsed.r || parsed.o) {
       return {
         id: 'gift_' + Date.now(),
-        senderName: lw.s || '',
-        receiverName: lw.r || '',
-        relationship: lw.rel,
-        occasion: lw.o || 'rakhi',
-        giftType: lw.g || 'rose',
-        secondaryGiftType: lw.g2,
-        worldTheme: lw.w || 'galaxy',
-        message: lw.m || '',
-        senderVoiceNote: lw.vn,
-        photos: lw.p || [],
-        hasMysteryEnvelope: lw.e === 1,
-        hasMagicScratch: lw.sc === 1,
-        hasSecondGift: lw.s2 === 1,
+        senderName: parsed.s || '',
+        receiverName: parsed.r || '',
+        relationship: parsed.rel,
+        occasion: parsed.o || 'rakhi',
+        giftType: parsed.g || 'rose',
+        secondaryGiftType: parsed.g2,
+        worldTheme: parsed.w || 'galaxy',
+        message: parsed.m || '',
+        senderVoiceNote: parsed.vn,
+        photos: parsed.p || [],
+        hasMysteryEnvelope: parsed.e === 1,
+        hasMagicScratch: parsed.sc === 1,
+        hasSecondGift: parsed.s2 === 1,
         enableAmbientMusic: true,
         createdAt: Date.now(),
       };
     }
 
-    // Support legacy format for backwards compatibility
-    if (hash.startsWith('#gift=')) {
-      const compressed = hash.replace('#gift=', '');
-      const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
-      if (!decompressed) return null;
-      return JSON.parse(decompressed) as GiftData;
-    }
-
-    return null;
+    return parsed as GiftData;
   } catch (err) {
-    console.error('Failed to decode gift from URL:', err);
+    console.error('Error decoding gift payload:', err);
     return null;
   }
 }
 
 export function generateWhatsAppLink(giftUrl: string, receiverName: string, senderName: string, occasion: string): string {
-  const text = `🎁 *Hey ${receiverName || 'there'}!* \n\n✨ *${senderName || 'Someone special'}* has sent you an interactive gift surprise for *${occasion.toUpperCase()}*!\n\n👇 *Tap to open your surprise:* \n${giftUrl}\n\n_Crafted on Gifti by AAYU SOLUTION_`;
+  const text = `🎁 *Hey ${receiverName || 'there'}!* \n\n✨ *${senderName || 'Someone special'}* has sent you a surprise for *${occasion.toUpperCase()}*!\n\n👇 *Tap to open your gift:* \n${giftUrl}\n\n_Crafted on Gifti by AAYU SOLUTION_`;
   return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
 }
 

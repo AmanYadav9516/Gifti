@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GiftData, Occasion, GiftType, WorldTheme, Relationship, MessageLength } from './types/gift';
+import { GiftData, Occasion, GiftType, WorldTheme, Relationship } from './types/gift';
 import { useLanguage } from './context/LanguageContext';
 import { useAudio } from './context/AudioContext';
 import { Header } from './components/common/Header';
@@ -11,15 +11,14 @@ import { VoiceRecorder } from './components/creator/VoiceRecorder';
 import { PhotoUploader } from './components/creator/PhotoUploader';
 import { ShareModal } from './components/creator/ShareModal';
 import { GiftJourney } from './components/receiver/GiftJourney';
-import { decodeGiftFromUrl } from './services/shareService';
+import { loadGiftFromCurrentUrl } from './services/shareService';
 import {
   Sparkles,
   Gift as GiftIcon,
   Heart,
-  Send,
   Eye,
   Sliders,
-  CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -29,6 +28,7 @@ export const App: React.FC = () => {
   // Mode: 'create' | 'preview' | 'received'
   const [viewMode, setViewMode] = useState<'create' | 'preview' | 'received'>('create');
   const [receivedGift, setReceivedGift] = useState<GiftData | null>(null);
+  const [isLoadingGift, setIsLoadingGift] = useState<boolean>(true);
   const [showShareModal, setShowShareModal] = useState(false);
 
   // Form State
@@ -46,24 +46,39 @@ export const App: React.FC = () => {
   const [hasSecondGift, setHasSecondGift] = useState(false);
   const [secondaryGiftType, setSecondaryGiftType] = useState<GiftType>('chocolate');
 
-  // Check URL hash for received gifts on mount
+  // Check URL on mount for received gift
   useEffect(() => {
-    const giftFromUrl = decodeGiftFromUrl();
-    if (giftFromUrl) {
-      setReceivedGift(giftFromUrl);
-      setViewMode('received');
+    async function checkUrlGift() {
+      setIsLoadingGift(true);
+      try {
+        const giftFromUrl = await loadGiftFromCurrentUrl();
+        if (giftFromUrl) {
+          setReceivedGift(giftFromUrl);
+          setViewMode('received');
+        }
+      } catch (err) {
+        console.error('Error loading gift from URL:', err);
+      } finally {
+        setIsLoadingGift(false);
+      }
     }
 
-    const handleHashChange = () => {
-      const g = decodeGiftFromUrl();
+    checkUrlGift();
+
+    const handleUrlChange = async () => {
+      const g = await loadGiftFromCurrentUrl();
       if (g) {
         setReceivedGift(g);
         setViewMode('received');
       }
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    window.addEventListener('popstate', handleUrlChange);
+    return () => {
+      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', handleUrlChange);
+    };
   }, []);
 
   // Construct active gift object
@@ -95,11 +110,35 @@ export const App: React.FC = () => {
   };
 
   const handleCreateNewGift = () => {
-    // Clear URL hash & switch to creator
-    window.location.hash = '';
+    // Clear URL parameters & switch to creator
+    window.history.replaceState({}, document.title, window.location.pathname);
     setReceivedGift(null);
     setViewMode('create');
   };
+
+  // If loading a gift from URL (?id=...)
+  if (isLoadingGift && (window.location.search.includes('id=') || window.location.hash.includes('id=') || window.location.search.includes('g=') || window.location.hash.includes('g='))) {
+    return (
+      <div className="min-h-screen bg-[#090714] text-white flex flex-col items-center justify-center p-4 text-center">
+        <div className="p-6 rounded-3xl bg-white/5 border border-rose-500/30 backdrop-blur-xl shadow-2xl space-y-4 max-w-sm w-full">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-400 p-[2px] shadow-lg animate-pulse">
+            <div className="w-full h-full bg-[#0E0B1F] rounded-[14px] flex items-center justify-center text-3xl">
+              🎁
+            </div>
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-white font-['Outfit']">
+              Opening Your Special Surprise... ✨
+            </h3>
+            <p className="text-xs text-gray-400">
+              Loading beautiful memories by AAYU SOLUTION
+            </p>
+          </div>
+          <Loader2 className="w-6 h-6 text-rose-400 animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
 
   // If in Received or Preview mode, render the Fullscreen Receiver Journey
   if (viewMode === 'received' && receivedGift) {
