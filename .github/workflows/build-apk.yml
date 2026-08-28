@@ -15,10 +15,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Set up Java JDK 21
@@ -44,11 +44,28 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Fix Kotlin Duplicate Classes Resolution
+        run: |
+          cat << 'EOF' >> android/app/build.gradle
+
+          configurations.all {
+              resolutionStrategy {
+                  force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
+              }
+          }
+
+          dependencies {
+              implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.9.22"))
+          }
+          EOF
+
       - name: Build Debug APK with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK to GitHub Artifacts
         uses: actions/upload-artifact@v4
