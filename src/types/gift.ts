@@ -54,10 +54,47 @@ export type Relationship =
 
 export type Language = 'en' | 'hi';
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  giftiId: string; // Unique, e.g. "aman_gifts"
+  dob: string; // YYYY-MM-DD for 12:01 AM Birthday engine
+  gender: 'male' | 'female' | 'other' | string;
+  phone: string; // 100% private to user & admin
+  city: string;
+  district: string;
+  state: string;
+  country: string;
+  avatarUrl: string;
+  invitedBy?: string;
+  inviteCount: number;
+  giftsSentCount: number;
+  giftsReceivedCount: number;
+  isBanned?: boolean;
+  role?: 'user' | 'admin';
+  createdAt: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  senderGiftiId: string;
+  receiverGiftiId: string;
+  text: string;
+  mode: 'magic' | 'classic';
+  privacy: 'friendly' | 'private_1h';
+  expiresAt?: number; // timestamp for 1-hour auto-delete
+  createdAt: number;
+}
+
 export interface GiftData {
   id: string;
   senderName: string;
+  senderGiftiId?: string;
   receiverName: string;
+  receiverGiftiId?: string;
   relationship?: Relationship | string;
   occasion: Occasion;
   giftType: GiftType;
