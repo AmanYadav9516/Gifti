@@ -7,7 +7,8 @@ export type Occasion =
   | 'friendship'
   | 'congratulations'
   | 'thankyou'
-  | 'anniversary';
+  | 'anniversary'
+  | 'engagement';
 
 export type GiftType = 
   | 'rose'
@@ -52,12 +53,23 @@ export type Relationship =
   | 'colleague'
   | 'special';
 
+export type ReactionType = 
+  | 'rose'
+  | 'balloon'
+  | 'confetti'
+  | 'star'
+  | 'hug'
+  | 'coffee'
+  | 'gift'
+  | 'laugh';
+
 export type Language = 'en' | 'hi';
 
 export interface UserProfile {
   id: string;
   name: string;
   giftiId: string; // Unique, e.g. "aman_gifts"
+  passwordHash?: string; // Secure password
   dob: string; // YYYY-MM-DD for 12:01 AM Birthday engine
   gender: 'male' | 'female' | 'other' | string;
   phone: string; // 100% private to user & admin
@@ -66,7 +78,8 @@ export interface UserProfile {
   state: string;
   country: string;
   avatarUrl: string;
-  invitedBy?: string;
+  following?: string[]; // Array of Gifti IDs followed
+  followersCount?: number;
   inviteCount: number;
   giftsSentCount: number;
   giftsReceivedCount: number;
@@ -85,7 +98,8 @@ export interface ChatMessage {
   text: string;
   mode: 'magic' | 'classic';
   privacy: 'friendly' | 'private_1h';
-  expiresAt?: number; // timestamp for 1-hour auto-delete
+  reaction?: ReactionType;
+  expiresAt?: number; // 1-hour for private, 24-hours for normal
   createdAt: number;
 }
 
@@ -103,12 +117,13 @@ export interface GiftData {
   customIntroText?: string;
   message: string;
   messageLength?: MessageLength;
-  senderVoiceNote?: string; // base64 data url or sound reference
-  photos?: string[]; // ImgBB cloud URLs
+  senderVoiceNote?: string;
+  photos?: string[];
   hasMysteryEnvelope: boolean;
   hasMagicScratch: boolean;
   hasSecondGift: boolean;
   secondGiftMessage?: string;
   enableAmbientMusic: boolean;
+  scheduledFor?: number; // Timestamp for 12:01 AM Time-Capsule surprise mode
   createdAt: number;
 }

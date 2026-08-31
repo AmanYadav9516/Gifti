@@ -6,6 +6,8 @@ import { Header } from './components/common/Header';
 import { SplashScreen } from './components/auth/SplashScreen';
 import { AuthModal } from './components/auth/AuthModal';
 import { SocialHomeHub } from './components/home/SocialHomeHub';
+import { SideDrawer } from './components/home/SideDrawer';
+import { GiftiVipCardModal } from './components/profile/GiftiVipCardModal';
 import { GiftuChatModal } from './components/chat/GiftuChatModal';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { BirthdaySurpriseModal } from './components/common/BirthdaySurpriseModal';
@@ -19,13 +21,14 @@ import { WorldSelector } from './components/creator/WorldSelector';
 import { AIMessageWriter } from './components/creator/AIMessageWriter';
 import { VoiceRecorder } from './components/creator/VoiceRecorder';
 import { PhotoUploader } from './components/creator/PhotoUploader';
+import { SurpriseScheduler } from './components/creator/SurpriseScheduler';
 import { ShareModal } from './components/creator/ShareModal';
 import { GiftJourney } from './components/receiver/GiftJourney';
 import { loadGiftFromCurrentUrl } from './services/shareService';
-import { getCachedCurrentUser, isUserBirthdayToday } from './services/authService';
+import { getCachedCurrentUser, isUserBirthdayToday, clearUserSession } from './services/authService';
+import { initDailyCareScheduler, requestNotificationPermission } from './services/notificationService';
 import {
   Sparkles,
-  Gift as GiftIcon,
   Sliders,
   Loader2,
   ArrowLeft,
@@ -46,7 +49,9 @@ export const App: React.FC = () => {
   const [receivedGift, setReceivedGift] = useState<GiftData | null>(null);
   const [isLoadingGift, setIsLoadingGift] = useState<boolean>(true);
 
-  // Modals & Chat Overlays
+  // Modals & Navigation Overlays
+  const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
+  const [showVipCardModal, setShowVipCardModal] = useState(false);
   const [activeChatTarget, setActiveChatTarget] = useState<{ giftiId: string; name: string; avatarUrl?: string } | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -65,6 +70,7 @@ export const App: React.FC = () => {
   const [message, setMessage] = useState('');
   const [voiceNoteUrl, setVoiceNoteUrl] = useState<string | undefined>();
   const [photos, setPhotos] = useState<string[]>([]);
+  const [scheduledFor, setScheduledFor] = useState<number | undefined>();
   const [hasMysteryEnvelope, setHasMysteryEnvelope] = useState(true);
   const [hasMagicScratch, setHasMagicScratch] = useState(true);
   const [hasSecondGift, setHasSecondGift] = useState(false);
@@ -76,13 +82,13 @@ export const App: React.FC = () => {
     if (cached) {
       setCurrentUser(cached);
       setSenderName(cached.name);
+      initDailyCareScheduler(cached.name);
+      requestNotificationPermission();
 
-      // Check if today is user's birthday for 12:01 AM celebration!
       if (isUserBirthdayToday(cached.dob)) {
         setShowBirthdayModal(true);
       }
     } else {
-      // Prompt one-time login/signup
       setShowAuthModal(true);
     }
 
@@ -108,6 +114,8 @@ export const App: React.FC = () => {
     setCurrentUser(user);
     setSenderName(user.name);
     setShowAuthModal(false);
+    initDailyCareScheduler(user.name);
+    requestNotificationPermission();
     if (isUserBirthdayToday(user.dob)) {
       setShowBirthdayModal(true);
     }
@@ -127,9 +135,23 @@ export const App: React.FC = () => {
     setShowShareModal(true);
   };
 
-  const handleCreateNewGift = () => {
+  const handleCreateNewGift = (replyTarget?: { giftiId?: string; name: string }) => {
     window.history.replaceState({}, document.title, window.location.pathname);
     setReceivedGift(null);
+    if (replyTarget) {
+      setReceiverName(replyTarget.name);
+      setTargetGiftiId(replyTarget.giftiId);
+      setViewMode('create');
+    } else {
+      setViewMode('hub');
+    }
+  };
+
+  const handleLogout = () => {
+    clearUserSession();
+    setCurrentUser(null);
+    setShowProfileModal(false);
+    setShowAuthModal(true);
     setViewMode('hub');
   };
 
@@ -154,6 +176,7 @@ export const App: React.FC = () => {
     hasMagicScratch,
     hasSecondGift,
     enableAmbientMusic: true,
+    scheduledFor,
     createdAt: Date.now(),
   };
 
@@ -209,6 +232,19 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#080516] text-white flex flex-col justify-between selection:bg-rose-500">
       
+      {/* Side Drawer Left Menu */}
+      {currentUser && (
+        <SideDrawer
+          isOpen={isSideDrawerOpen}
+          currentUser={currentUser}
+          onClose={() => setIsSideDrawerOpen(false)}
+          onOpenVipCard={() => setShowVipCardModal(true)}
+          onOpenInvite={() => setShowInviteModal(true)}
+          onOpenAdmin={() => setShowAdminPanel(true)}
+          onLogout={handleLogout}
+        />
+      )}
+
       {/* App Header */}
       <Header
         currentView={viewMode === 'hub' ? 'create' : 'create'}
@@ -220,11 +256,13 @@ export const App: React.FC = () => {
         <main className="flex-1 pb-16">
           <SocialHomeHub
             currentUser={currentUser}
+            onOpenSideDrawer={() => setIsSideDrawerOpen(true)}
+            onOpenVipCard={() => setShowVipCardModal(true)}
             onOpenChatWithUser={(user) => setActiveChatTarget(user)}
             onStartCreateGift={handleStartCreateGift}
-            onOpenAdminPanel={() => setShowAdminPanel(true)}
             onOpenProfile={() => setShowProfileModal(true)}
             onOpenInviteModal={() => setShowInviteModal(true)}
+            onUpdateCurrentUser={(u) => setCurrentUser(u)}
           />
         </main>
       )}
@@ -304,7 +342,13 @@ export const App: React.FC = () => {
             {/* STEP 6: PHOTO MEMORIES */}
             <PhotoUploader photos={photos} onPhotosChange={setPhotos} />
 
-            {/* STEP 7: SURPRISE ADD-ONS */}
+            {/* STEP 7: TIME-CAPSULE SURPRISE SCHEDULER (12:01 AM DELIVERY) */}
+            <SurpriseScheduler
+              scheduledFor={scheduledFor}
+              onScheduleChange={setScheduledFor}
+            />
+
+            {/* STEP 8: SURPRISE ADD-ONS */}
             <div className="p-4 sm:p-5 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3 shadow-xl">
               <div className="flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-amber-400" />
@@ -393,12 +437,20 @@ export const App: React.FC = () => {
 
       {/* OVERLAYS & MODALS */}
       
-      {/* 1. Auth Modal (Only on first install or logout) */}
+      {/* 1. Auth Modal (One-Time / Logout) */}
       {showAuthModal && !currentUser && (
         <AuthModal onSuccess={handleAuthSuccess} />
       )}
 
-      {/* 2. GIFTU Magician Chat Modal */}
+      {/* 2. 3D Holographic VIP Card Modal */}
+      {showVipCardModal && currentUser && (
+        <GiftiVipCardModal
+          user={currentUser}
+          onClose={() => setShowVipCardModal(false)}
+        />
+      )}
+
+      {/* 3. GIFTU Magician 2-Way Chat Modal */}
       {activeChatTarget && currentUser && (
         <GiftuChatModal
           currentUser={currentUser}
@@ -411,12 +463,12 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* 3. Secret Admin Control Panel */}
+      {/* 4. Secret Admin Control Panel */}
       {showAdminPanel && (
         <AdminDashboard onClose={() => setShowAdminPanel(false)} />
       )}
 
-      {/* 4. 12:01 AM Birthday Surprise */}
+      {/* 5. 12:01 AM Birthday Surprise */}
       {showBirthdayModal && currentUser && (
         <BirthdaySurpriseModal
           user={currentUser}
@@ -424,7 +476,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* 5. Invite Modal */}
+      {/* 6. Invite Modal */}
       {showInviteModal && currentUser && (
         <InviteModal
           currentUser={currentUser}
@@ -432,7 +484,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* 6. User Profile Modal */}
+      {/* 7. User Profile Modal */}
       {showProfileModal && currentUser && (
         <UserProfileModal
           currentUser={currentUser}
@@ -441,16 +493,11 @@ export const App: React.FC = () => {
             setCurrentUser(u);
             setSenderName(u.name);
           }}
-          onLogout={() => {
-            setCurrentUser(null);
-            setShowProfileModal(false);
-            setShowAuthModal(true);
-            setViewMode('hub');
-          }}
+          onLogout={handleLogout}
         />
       )}
 
-      {/* 7. Share Modal */}
+      {/* 8. Share Modal */}
       {showShareModal && (
         <ShareModal
           gift={currentGiftData}
@@ -462,7 +509,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Footer */}
+      {/* Global Footer */}
       <footer className="py-4 border-t border-white/10 text-center text-xs text-gray-400 font-medium">
         <p>
           Gifti • {language === 'hi' ? 'दिलों को जोड़ने वाला सोशल ऐप' : 'Next-Gen Social Gifting Network'} • Crafted with ❤️ by{' '}

@@ -24,15 +24,20 @@ import {
   ArrowRight,
   Gift as GiftIcon,
   RotateCcw,
+  Lock,
+  Clock,
+  Send,
+  Plus,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface GiftJourneyProps {
   gift: GiftData;
-  onCreateNewGift: () => void;
+  onCreateNewGift: (replyTarget?: { giftiId?: string; name: string }) => void;
 }
 
 type JourneyStage =
+  | 'locked_vault'
   | 'intro'
   | 'magic_scratch'
   | 'envelope'
@@ -42,12 +47,44 @@ type JourneyStage =
   | 'final_letter';
 
 export const GiftJourney: React.FC<GiftJourneyProps> = ({ gift, onCreateNewGift }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { playSparkle, playUnbox, playAmbient, stopAmbient } = useAudio();
 
-  const [stage, setStage] = useState<JourneyStage>('intro');
+  // Check Time-Capsule Vault lock
+  const isCurrentlyLocked = !!(gift.scheduledFor && Date.now() < gift.scheduledFor);
+  const [stage, setStage] = useState<JourneyStage>(isCurrentlyLocked ? 'locked_vault' : 'intro');
+  const [timeLeft, setTimeLeft] = useState<{ hours: number; mins: number; secs: number }>({ hours: 0, mins: 0, secs: 0 });
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const audioVoiceRef = useRef<HTMLAudioElement | null>(null);
+
+  // Time-Capsule Countdown Timer
+  useEffect(() => {
+    if (!gift.scheduledFor) return;
+
+    const timer = setInterval(() => {
+      const remaining = gift.scheduledFor! - Date.now();
+      if (remaining <= 0) {
+        clearInterval(timer);
+        if (stage === 'locked_vault') {
+          playUnbox();
+          confetti({
+            particleCount: 100,
+            spread: 80,
+            origin: { y: 0.5 },
+            colors: ['#FFD700', '#FF4D6D', '#38BDF8'],
+          });
+          setStage('intro');
+        }
+      } else {
+        const hours = Math.floor(remaining / (1000 * 60 * 60));
+        const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((remaining % (1000 * 60)) / 1000);
+        setTimeLeft({ hours, mins, secs });
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gift.scheduledFor, stage, playUnbox]);
 
   useEffect(() => {
     playAmbient(gift.worldTheme);
@@ -136,7 +173,7 @@ export const GiftJourney: React.FC<GiftJourneyProps> = ({ gift, onCreateNewGift 
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col justify-between overflow-x-hidden">
+    <div className="relative min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
       
       {/* Dynamic Thematic Background Particles */}
       <ParticleCanvas theme={gift.worldTheme} />
@@ -144,6 +181,57 @@ export const GiftJourney: React.FC<GiftJourneyProps> = ({ gift, onCreateNewGift 
       {/* Main Content Area */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-xl mx-auto w-full">
         
+        {/* 0. TIME-CAPSULE LOCKED VAULT (IF OPENED EARLY) */}
+        {stage === 'locked_vault' && (
+          <div className="flex flex-col items-center text-center space-y-6 animate-fade-in my-auto py-8">
+            
+            {/* Locked Vault 3D Animation */}
+            <div className="relative w-28 h-28 rounded-3xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 p-[3px] shadow-2xl shadow-amber-500/30 animate-pulse">
+              <div className="w-full h-full bg-[#0E0B1F] rounded-[21px] flex items-center justify-center text-5xl">
+                🔒
+              </div>
+              <Sparkles className="absolute -top-2 -right-2 w-7 h-7 text-amber-300 animate-spin-slow" />
+            </div>
+
+            <div className="space-y-2 max-w-md">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/40 text-xs font-bold">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Time-Capsule Surprise Lock Active</span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl font-black font-['Outfit'] text-white">
+                {gift.receiverName ? `Dear ${gift.receiverName},` : 'Hey there!'}
+              </h1>
+              <p className="text-sm text-gray-300 leading-relaxed">
+                {gift.senderName || 'Someone special'} has locked a magical midnight surprise for you!
+              </p>
+            </div>
+
+            {/* Countdown Clock Box */}
+            <div className="p-4 rounded-3xl bg-black/60 border border-amber-400/40 shadow-2xl flex items-center gap-4 text-center">
+              <div className="space-y-0.5">
+                <span className="text-2xl sm:text-3xl font-black font-mono text-amber-300">{timeLeft.hours}</span>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Hours</p>
+              </div>
+              <span className="text-2xl font-black text-rose-400">:</span>
+              <div className="space-y-0.5">
+                <span className="text-2xl sm:text-3xl font-black font-mono text-amber-300">{timeLeft.mins}</span>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Mins</p>
+              </div>
+              <span className="text-2xl font-black text-rose-400">:</span>
+              <div className="space-y-0.5">
+                <span className="text-2xl sm:text-3xl font-black font-mono text-amber-300">{timeLeft.secs}</span>
+                <p className="text-[10px] font-bold text-gray-400 uppercase">Secs</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-amber-300/90 font-medium italic">
+              "This surprise will automatically unlock at exact midnight (12:01 AM). Keep your phone ready! 🎁"
+            </p>
+
+          </div>
+        )}
+
         {/* 1. INTRO CINEMATIC SCREEN */}
         {stage === 'intro' && (
           <div className="flex flex-col items-center text-center space-y-6 animate-fade-in my-auto py-8">
@@ -200,8 +288,6 @@ export const GiftJourney: React.FC<GiftJourneyProps> = ({ gift, onCreateNewGift 
         {/* 5. PRIMARY GIFT REVEAL & SENSORY TOUCH */}
         {stage === 'gift_reveal' && (
           <div className="w-full space-y-6 text-center animate-fade-in py-4">
-            
-            {/* Occasion Header */}
             <div className="space-y-1">
               <span className="text-xs font-bold uppercase tracking-widest text-gradient-gold">
                 {t.occasions[gift.occasion]}
@@ -211,7 +297,6 @@ export const GiftJourney: React.FC<GiftJourneyProps> = ({ gift, onCreateNewGift 
               </h2>
             </div>
 
-            {/* Interactive 3D Gift */}
             {renderInteractiveGift(gift.giftType)}
 
             {/* Voice Note Attachment Player */}
@@ -241,7 +326,7 @@ export const GiftJourney: React.FC<GiftJourneyProps> = ({ gift, onCreateNewGift 
               </div>
             )}
 
-            {/* Next Action: Read Personal Letter or Open 2nd Gift */}
+            {/* Next Action */}
             <div className="pt-4 flex flex-col items-center gap-3">
               {gift.hasSecondGift ? (
                 <button
@@ -289,7 +374,7 @@ export const GiftJourney: React.FC<GiftJourneyProps> = ({ gift, onCreateNewGift 
           </div>
         )}
 
-        {/* 7. FINAL PERSONAL LETTER CARD & VIRAL MARKETING BANNER */}
+        {/* 7. FINAL PERSONAL LETTER CARD & INFINITE VIRAL SHARING LOOP */}
         {stage === 'final_letter' && (
           <div className="w-full space-y-6 text-center animate-fade-in py-4">
             
@@ -320,6 +405,35 @@ export const GiftJourney: React.FC<GiftJourneyProps> = ({ gift, onCreateNewGift 
               </div>
             </div>
 
+            {/* FEATURE #14: THE INFINITE VIRAL SHARING LOOP */}
+            <div className="p-4 rounded-3xl bg-gradient-to-r from-purple-950/80 via-[#130B29] to-rose-950/80 border border-white/15 shadow-2xl space-y-3">
+              <h4 className="text-sm font-black text-white font-['Outfit']">
+                {language === 'hi' ? 'प्यार का यह सिलसिला आगे बढ़ाएं ✨' : 'Keep the Magic Chain Going! ✨'}
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                
+                {/* 1. Reply to Sender */}
+                <button
+                  onClick={() => onCreateNewGift({ giftiId: gift.senderGiftiId, name: gift.senderName })}
+                  className="py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-500/25 hover:scale-105 active:scale-95 transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Send a Gift Back to {gift.senderName || 'Sender'} 🎁</span>
+                </button>
+
+                {/* 2. Gift Someone Else (Viral loop) */}
+                <button
+                  onClick={() => onCreateNewGift()}
+                  className="py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-xs flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-all"
+                >
+                  <Plus className="w-4 h-4 text-amber-400" />
+                  <span>Gift Someone Else ✨</span>
+                </button>
+
+              </div>
+            </div>
+
             {/* Replay Journey Button */}
             <button
               type="button"
@@ -330,8 +444,8 @@ export const GiftJourney: React.FC<GiftJourneyProps> = ({ gift, onCreateNewGift 
               <span>Replay Gift Experience</span>
             </button>
 
-            {/* Promotional Viral Banner by AAYU SOLUTION */}
-            <ViralMarketingBanner onCreateGift={onCreateNewGift} />
+            {/* Promotional Banner */}
+            <ViralMarketingBanner onCreateGift={() => onCreateNewGift()} />
 
           </div>
         )}

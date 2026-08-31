@@ -3,6 +3,18 @@ import { firestoreGetDoc, firestoreSetDoc, firestoreQueryCollection } from './fi
 
 const CURRENT_USER_KEY = 'gifti_auth_user_session';
 
+export const DEFAULT_AVATARS = [
+  'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300&auto=format&fit=crop&q=80', // Emerald Mountain Nature
+  'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=300&auto=format&fit=crop&q=80', // Luxury Supercar
+  'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80', // Cosmic Galaxy
+  'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=300&auto=format&fit=crop&q=80', // Snowy Mountain Starry Sky
+  'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=300&auto=format&fit=crop&q=80', // Neon Sunset City
+];
+
+export function getRandomDefaultAvatar(): string {
+  return DEFAULT_AVATARS[Math.floor(Math.random() * DEFAULT_AVATARS.length)];
+}
+
 export function getCachedCurrentUser(): UserProfile | null {
   try {
     const raw = localStorage.getItem(CURRENT_USER_KEY);
@@ -32,22 +44,32 @@ export async function checkGiftiIdAvailability(rawId: string): Promise<boolean> 
   const cleanId = rawId.toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
   if (cleanId.length < 3) return false;
 
-  // Check Firestore registry
   const existing = await firestoreGetDoc('gifti_ids', cleanId);
   return !existing;
 }
 
 /**
- * Registers a new user account on Firebase & caches session
+ * Registers a new user account with password, DOB, and smart default avatar
  */
-export async function registerUserProfile(data: Omit<UserProfile, 'id' | 'createdAt' | 'inviteCount' | 'giftsSentCount' | 'giftsReceivedCount'>): Promise<UserProfile> {
+export async function registerUserProfile(data: Omit<UserProfile, 'id' | 'createdAt' | 'inviteCount' | 'giftsSentCount' | 'giftsReceivedCount'> & { password?: string }): Promise<UserProfile> {
   const cleanGiftiId = data.giftiId.toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
   const userId = 'usr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
 
   const newUser: UserProfile = {
-    ...data,
-    id: userId,
+    name: data.name,
     giftiId: cleanGiftiId,
+    passwordHash: data.password ? simpleHash(data.password) : undefined,
+    dob: data.dob,
+    gender: data.gender,
+    phone: data.phone,
+    city: data.city,
+    district: data.district,
+    state: data.state,
+    country: data.country,
+    avatarUrl: data.avatarUrl || getRandomDefaultAvatar(),
+    following: [],
+    followersCount: 0,
+    id: userId,
     inviteCount: 0,
     giftsSentCount: 0,
     giftsReceivedCount: 0,
@@ -74,32 +96,40 @@ export async function registerUserProfile(data: Omit<UserProfile, 'id' | 'create
 }
 
 /**
- * Logs in with an existing Gifti ID or Mobile number
+ * Logs in with Gifti ID/Phone + Password
  */
-export async function loginWithGiftiIdOrPhone(identifier: string): Promise<UserProfile | null> {
+export async function loginWithGiftiIdOrPhone(identifier: string, password?: string): Promise<UserProfile | null> {
   const clean = identifier.toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
 
   // Try Gifti ID registry first
   const idEntry = await firestoreGetDoc('gifti_ids', clean);
+  let user: UserProfile | null = null;
+
   if (idEntry && idEntry.userId) {
     const userDoc = await firestoreGetDoc('users', String(idEntry.userId));
     if (userDoc) {
-      const user = userDoc as unknown as UserProfile;
-      if (user.isBanned) {
-        throw new Error('This account has been suspended by the administrator.');
-      }
-      saveUserSession(user);
-      return user;
+      user = userDoc as unknown as UserProfile;
     }
   }
 
-  // Search by mobile number if not found by ID
-  const allUsers = await firestoreQueryCollection('users');
-  const found = allUsers.find((u) => u.phone === identifier || u.giftiId === clean);
-  if (found) {
-    const user = found as unknown as UserProfile;
+  // Fallback search by mobile
+  if (!user) {
+    const allUsers = await firestoreQueryCollection('users');
+    const found = allUsers.find((u) => u.phone === identifier || u.giftiId === clean);
+    if (found) {
+      user = found as unknown as UserProfile;
+    }
+  }
+
+  if (user) {
     if (user.isBanned) {
-      throw new Error('This account has been suspended by the administrator.');
+      throw new Error('This account has been suspended by administrator.');
+    }
+    // Verify password if user has one set
+    if (user.passwordHash && password) {
+      if (user.passwordHash !== simpleHash(password)) {
+        throw new Error('Incorrect password. Please try again.');
+      }
     }
     saveUserSession(user);
     return user;
@@ -108,9 +138,16 @@ export async function loginWithGiftiIdOrPhone(identifier: string): Promise<UserP
   return null;
 }
 
-/**
- * Checks if today is the user's birthday (for 12:01 AM celebration engine)
- */
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return 'h_' + Math.abs(hash);
+}
+
 export function isUserBirthdayToday(dobString?: string): boolean {
   if (!dobString) return false;
   try {

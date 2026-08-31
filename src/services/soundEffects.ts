@@ -48,11 +48,72 @@ class SoundEngine {
         osc.stop(ctx.currentTime + index * 0.05 + 0.6);
       });
     } catch {
-      // Audio context fallback
+      // Audio fallback
     }
   }
 
-  // 2. Unbox / Celebration Fanfare
+  // 2. Sweet Soft Magic Notification Chime
+  public playNotificationChime() {
+    if (this.isMuted) return;
+    try {
+      const ctx = this.getContext();
+      const notes = [659.25, 880.00, 1174.66]; // E5, A5, D6 - Soft uplifting chime
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+
+        gain.gain.setValueAtTime(0.001, ctx.currentTime + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + idx * 0.08 + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + idx * 0.08 + 0.6);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(ctx.currentTime + idx * 0.08);
+        osc.stop(ctx.currentTime + idx * 0.08 + 0.7);
+      });
+    } catch {
+      // Audio fallback
+    }
+  }
+
+  // 3. Reaction Micro-VFX Sound
+  public playReactionSound(reaction?: string) {
+    if (this.isMuted) return;
+    try {
+      const ctx = this.getContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      if (reaction === 'laugh') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.15);
+      } else if (reaction === 'confetti' || reaction === 'balloon') {
+        this.playUnbox();
+        return;
+      } else {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(783.99, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.18);
+      }
+
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.22);
+    } catch {
+      // Audio fallback
+    }
+  }
+
+  // 4. Unbox / Celebration Fanfare
   public playUnbox() {
     if (this.isMuted) return;
     try {
@@ -79,7 +140,7 @@ class SoundEngine {
     }
   }
 
-  // 3. Heartbeat Pulse
+  // 5. Heartbeat Pulse
   public playHeartbeat() {
     if (this.isMuted) return;
     try {
@@ -106,12 +167,11 @@ class SoundEngine {
     }
   }
 
-  // 4. Candle Extinguish & Firework Pop
+  // 6. Candle Extinguish & Firework Pop
   public playCandleExtinguish() {
     if (this.isMuted) return;
     try {
       const ctx = this.getContext();
-      // White noise puff
       const bufferSize = ctx.sampleRate * 0.3;
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const output = buffer.getChannelData(0);
@@ -137,14 +197,13 @@ class SoundEngine {
 
       whiteNoise.start(ctx.currentTime);
 
-      // Subsequent celebration chime
       setTimeout(() => this.playSparkle(), 250);
     } catch {
       // Audio fallback
     }
   }
 
-  // 5. Wax Seal Breaking Sound
+  // 7. Wax Seal Breaking Sound
   public playWaxSealBreak() {
     if (this.isMuted) return;
     try {
@@ -168,7 +227,7 @@ class SoundEngine {
     }
   }
 
-  // 6. Generative Ambient World Soundscapes
+  // 8. Generative Ambient World Soundscapes
   public playAmbient(theme: string) {
     if (this.isMuted) return;
     this.stopAmbient();
@@ -180,10 +239,10 @@ class SoundEngine {
       this.ambientGain.connect(ctx.destination);
 
       const scale = theme === 'galaxy' 
-        ? [220, 277.18, 329.63, 440, 554.37] // A minor cosmic
+        ? [220, 277.18, 329.63, 440, 554.37]
         : theme === 'festive' || theme === 'rakhi'
-        ? [293.66, 329.63, 369.99, 440, 493.88, 587.33] // Indian D major / Raag Bhupali vibe
-        : [261.63, 293.66, 329.63, 392.00, 440, 523.25]; // Warm C major
+        ? [293.66, 329.63, 369.99, 440, 493.88, 587.33]
+        : [261.63, 293.66, 329.63, 392.00, 440, 523.25];
 
       let noteIndex = 0;
       this.ambientInterval = window.setInterval(() => {

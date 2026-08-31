@@ -21,6 +21,7 @@ export const OccasionSelector: React.FC<OccasionSelectorProps> = ({ selected, on
     { id: 'brother', icon: '👨', color: 'from-cyan-500/20 to-blue-500/30 border-cyan-500/40' },
     { id: 'friendship', icon: '🫂', color: 'from-emerald-500/20 to-teal-500/30 border-emerald-500/40' },
     { id: 'anniversary', icon: '💍', color: 'from-yellow-500/20 to-amber-600/30 border-yellow-500/40' },
+    { id: 'engagement', icon: '💎', color: 'from-cyan-500/20 to-blue-500/30 border-cyan-500/40' },
     { id: 'congratulations', icon: '🎉', color: 'from-orange-500/20 to-pink-500/30 border-orange-500/40' },
     { id: 'thankyou', icon: '💐', color: 'from-violet-500/20 to-fuchsia-500/30 border-violet-500/40' },
   ];

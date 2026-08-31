@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../../types/gift';
-import { registerUserProfile, loginWithGiftiIdOrPhone, checkGiftiIdAvailability } from '../../services/authService';
+import { registerUserProfile, loginWithGiftiIdOrPhone, checkGiftiIdAvailability, getRandomDefaultAvatar } from '../../services/authService';
 import { uploadImageToImgBB } from '../../services/imgbbService';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAudio } from '../../context/AudioContext';
@@ -9,7 +9,6 @@ import {
   User,
   Calendar,
   Phone,
-  MapPin,
   Camera,
   AtSign,
   Lock,
@@ -17,7 +16,7 @@ import {
   AlertCircle,
   Loader2,
   ShieldCheck,
-  Heart,
+  KeyRound,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -36,6 +35,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   // Form Fields
   const [name, setName] = useState('');
   const [giftiId, setGiftiId] = useState('');
+  const [password, setPassword] = useState('');
   const [isIdAvailable, setIsIdAvailable] = useState<boolean | null>(null);
   const [checkingId, setCheckingId] = useState(false);
   const [dob, setDob] = useState('');
@@ -45,11 +45,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   const [district, setDistrict] = useState('');
   const [stateName, setStateName] = useState('');
   const [country, setCountry] = useState('India');
-  const [avatarUrl, setAvatarUrl] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80');
+  const [avatarUrl, setAvatarUrl] = useState(getRandomDefaultAvatar());
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // Login Field
+  // Login Fields
   const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   // Real-time unique Gifti ID check
   useEffect(() => {
@@ -77,7 +78,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
     try {
       const url = await uploadImageToImgBB(file);
       setAvatarUrl(url);
-      playSparkle();
     } catch (err) {
       console.warn('Avatar upload fallback:', err);
     } finally {
@@ -99,11 +99,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
       return;
     }
 
+    if (password.length < 4) {
+      setErrorMsg(language === 'hi' ? 'पासवर्ड कम से कम 4 अक्षरों का होना चाहिए।' : 'Password must be at least 4 characters.');
+      return;
+    }
+
     setLoading(true);
     try {
       const user = await registerUserProfile({
         name,
         giftiId,
+        password,
         dob,
         gender,
         phone,
@@ -136,12 +142,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      const user = await loginWithGiftiIdOrPhone(loginIdentifier);
+      const user = await loginWithGiftiIdOrPhone(loginIdentifier, loginPassword);
       if (user) {
         playUnbox();
         onSuccess(user);
       } else {
-        setErrorMsg(language === 'hi' ? 'कोई खाता नहीं मिला। कृपया अपनी ID या नंबर जांचें।' : 'No account found. Please check your Gifti ID or Mobile number.');
+        setErrorMsg(language === 'hi' ? 'खाता नहीं मिला। कृपया अपनी ID या पासवर्ड जांचें।' : 'Account not found. Please check your credentials.');
       }
     } catch (err: unknown) {
       const error = err as Error;
@@ -168,8 +174,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
           </h2>
           <p className="text-xs text-gray-300">
             {mode === 'signup'
-              ? (language === 'hi' ? 'अपनी अनूठी Gifti ID बनाएं और दोस्तों से जुड़ें' : 'Create your unique Gifti ID and connect with loved ones')
-              : (language === 'hi' ? 'अपनी Gifti ID या फोन नंबर से लॉगिन करें' : 'Login using your Gifti ID or Mobile Number')}
+              ? (language === 'hi' ? 'अपनी अनूठी Gifti ID और पासवर्ड बनाएं' : 'Create your unique Gifti ID and secure password')
+              : (language === 'hi' ? 'अपनी Gifti ID और पासवर्ड से लॉगिन करें' : 'Login using your Gifti ID and Password')}
           </p>
         </div>
 
@@ -212,9 +218,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
         {mode === 'signup' ? (
           <form onSubmit={handleSignUpSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             
-            {/* Avatar Upload */}
+            {/* Avatar Upload / Smart Default */}
             <div className="flex flex-col items-center justify-center gap-2 py-1">
-              <div className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-rose-400/80 shadow-lg">
+              <div className="relative group w-20 h-20 rounded-full overflow-hidden border-2 border-rose-400 shadow-lg">
                 <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
                   <Camera className="w-6 h-6 text-white" />
@@ -227,7 +233,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 )}
               </div>
               <span className="text-[11px] text-gray-400 font-medium">
-                {language === 'hi' ? 'प्रोफाइल फोटो बदलें (ImgBB HD)' : 'Tap photo to upload avatar'}
+                {language === 'hi' ? 'फोटो लगाएं या डिफ़ॉल्ट रहने दें' : 'Tap to upload photo or keep default avatar'}
               </span>
             </div>
 
@@ -281,7 +287,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
               </div>
             </div>
 
-            {/* 2. Date of Birth (DOB) & Gender */}
+            {/* 2. Password Setup */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-300 flex items-center gap-1">
+                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                <span>{language === 'hi' ? 'पासवर्ड (खाता सुरक्षा के लिए)' : 'Password (For Account Security)'}</span>
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Choose a password (min 4 characters)"
+                className="w-full px-3.5 py-2 rounded-2xl bg-black/50 border border-white/15 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-rose-400"
+              />
+            </div>
+
+            {/* 3. DOB & Gender */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-amber-300 flex items-center gap-1">
@@ -313,7 +335,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
               </div>
             </div>
 
-            {/* 3. Mobile Number with User's Exact Requested Privacy Notice */}
+            {/* 4. Mobile Number with Privacy Notice */}
             <div className="space-y-1.5 p-3 rounded-2xl bg-black/30 border border-white/10">
               <label className="text-xs font-bold text-gray-300 flex items-center gap-1">
                 <Phone className="w-3.5 h-3.5 text-emerald-400" />
@@ -327,7 +349,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 placeholder="e.g. 9876543210"
                 className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/15 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-rose-400"
               />
-              {/* User's Exact Requested Privacy Reassurance */}
               <div className="flex items-start gap-1.5 pt-1 text-[11px] text-amber-300/90 font-medium leading-tight">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                 <span>
@@ -338,7 +359,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
               </div>
             </div>
 
-            {/* 4. Location (City, District, State, Country) */}
+            {/* 5. Location */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-gray-400">City</label>
@@ -408,8 +429,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
           </form>
         ) : (
           /* LOGIN FORM */
-          <form onSubmit={handleLoginSubmit} className="space-y-4 py-2">
-            <div className="space-y-1.5">
+          <form onSubmit={handleLoginSubmit} className="space-y-3.5 py-2">
+            <div className="space-y-1">
               <label className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
                 <AtSign className="w-3.5 h-3.5 text-rose-400" />
                 <span>{language === 'hi' ? 'आपकी GIFTI ID या मोबाइल नंबर' : 'Your GIFTI ID or Mobile Number'}</span>
@@ -420,7 +441,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
                 placeholder="e.g. aman_gifts or 9876543210"
-                className="w-full px-4 py-3 rounded-2xl bg-black/50 border border-white/15 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-rose-400"
+                className="w-full px-4 py-2.5 rounded-2xl bg-black/50 border border-white/15 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-rose-400"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-300 flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                <span>{language === 'hi' ? 'पासवर्ड' : 'Password'}</span>
+              </label>
+              <input
+                type="password"
+                required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="w-full px-4 py-2.5 rounded-2xl bg-black/50 border border-white/15 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-rose-400"
               />
             </div>
 

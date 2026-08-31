@@ -129,6 +129,7 @@ const translations: Record<Language, Translations> = {
       congratulations: '🎉 Congratulations',
       thankyou: '💐 Heartfelt Thanks',
       anniversary: '💍 Happy Anniversary',
+      engagement: '💍 Engagement / सगाई',
     },
     
     gifts: {
@@ -280,6 +281,7 @@ const translations: Record<Language, Translations> = {
       congratulations: '🎉 हार्दिक बधाई',
       thankyou: '💐 दिल से शुक्रिया',
       anniversary: '💍 सालगिरह (Anniversary)',
+      engagement: '💍 सगाई (Engagement)',
     },
     
     gifts: {

@@ -9,6 +9,8 @@ interface AudioContextType {
   playHeartbeat: () => void;
   playCandleExtinguish: () => void;
   playWaxSealBreak: () => void;
+  playNotificationChime: () => void;
+  playReactionSound: (reaction?: string) => void;
   playAmbient: (theme: string) => void;
   stopAmbient: () => void;
 }
@@ -40,6 +42,8 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playHeartbeat: () => sounds.playHeartbeat(),
         playCandleExtinguish: () => sounds.playCandleExtinguish(),
         playWaxSealBreak: () => sounds.playWaxSealBreak(),
+        playNotificationChime: () => sounds.playNotificationChime(),
+        playReactionSound: (reaction?: string) => sounds.playReactionSound(reaction),
         playAmbient: (theme: string) => sounds.playAmbient(theme),
         stopAmbient: () => sounds.stopAmbient(),
       }}
