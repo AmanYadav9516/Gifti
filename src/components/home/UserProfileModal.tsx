@@ -17,6 +17,7 @@ import {
   Save,
   Loader2,
   Sparkles,
+  FileText,
 } from 'lucide-react';
 
 interface UserProfileModalProps {
@@ -36,6 +37,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const { playSparkle } = useAudio();
 
   const [name, setName] = useState(currentUser.name);
+  const [bio, setBio] = useState(currentUser.bio || '');
   const [city, setCity] = useState(currentUser.city || '');
   const [stateName, setStateName] = useState(currentUser.state || '');
   const [dob, setDob] = useState(currentUser.dob || '');
@@ -67,6 +69,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     const updatedUser: UserProfile = {
       ...currentUser,
       name,
+      bio,
       city,
       state: stateName,
       dob,
@@ -82,7 +85,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl select-none animate-fade-in text-white">
-      <div className="relative w-full max-w-md p-6 rounded-3xl bg-[#0E0B1F] border border-rose-500/30 shadow-2xl text-center space-y-5">
+      <div className="relative w-full max-w-md p-6 rounded-3xl bg-[#0E0B1F] border border-rose-500/30 shadow-2xl text-center space-y-4 max-h-[90vh] overflow-y-auto">
         
         {/* Close Button */}
         <button
@@ -95,13 +98,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         {/* Header */}
         <div className="pt-2">
           <h2 className="text-xl font-black font-['Outfit'] text-white">
-            {language === 'hi' ? 'आपकी प्रोफ़ाइल' : 'Your Gifti Profile'}
+            {language === 'hi' ? 'आपकी प्रोफ़ाइल अपडेट करें' : 'Edit Your Profile'}
           </h2>
           <p className="text-xs text-amber-300 font-mono">@{currentUser.giftiId}</p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSave} className="space-y-4 text-left">
+        <form onSubmit={handleSave} className="space-y-3.5 text-left">
           
           {/* Avatar Upload */}
           <div className="flex flex-col items-center justify-center gap-2">
@@ -122,13 +125,28 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
           {/* Name */}
           <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-300">Name</label>
+            <label className="text-xs font-bold text-gray-300">Full Name</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-sm text-white focus:outline-none focus:border-rose-400"
+            />
+          </div>
+
+          {/* Bio / Description */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-amber-300 flex items-center gap-1">
+              <FileText className="w-3.5 h-3.5" />
+              <span>About You / Bio (Instagram Style)</span>
+            </label>
+            <textarea
+              rows={2}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="e.g. Heart-toucher • Lover of surprises & deep yaari ✨"
+              className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/15 text-xs text-white focus:outline-none focus:border-rose-400"
             />
           </div>
 
@@ -145,7 +163,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-gray-400">Mobile (Private)</label>
+              <label className="text-[11px] font-bold text-gray-400">Mobile (100% Private)</label>
               <input
                 type="text"
                 disabled
@@ -185,7 +203,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             className="w-full py-3 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-400 text-white font-bold text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>Save Changes</span>
+            <span>Save Profile Changes</span>
           </button>
 
           {/* Logout Button */}

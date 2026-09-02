@@ -26,13 +26,53 @@ const DAILY_CARE_MESSAGES = {
   ],
 };
 
-export async function requestNotificationPermission(): Promise<boolean> {
-  if (!('Notification' in window)) return false;
+export type InAppToastCallback = (toast: { title: string; body: string; icon?: string }) => void;
+let inAppToastListener: InAppToastCallback | null = null;
+
+export function registerInAppToastListener(cb: InAppToastCallback) {
+  inAppToastListener = cb;
+}
+
+export function unregisterInAppToastListener() {
+  inAppToastListener = null;
+}
+
+/**
+ * Explicit user-triggered permission request (avoids browser auto-block)
+ */
+export async function triggerNotificationPermission(): Promise<NotificationPermission | 'unsupported'> {
+  if (!('Notification' in window)) return 'unsupported';
   try {
     const perm = await Notification.requestPermission();
-    return perm === 'granted';
+    if (perm === 'granted') {
+      sounds.playNotificationChime();
+      showNotificationDirect('🔔 Magic Notifications Activated!', 'You will now receive instant alerts when someone sends you gifts, love notes, and daily care!');
+    }
+    return perm;
   } catch {
-    return false;
+    return 'denied';
+  }
+}
+
+export function showNotificationDirect(title: string, body: string) {
+  sounds.playNotificationChime();
+
+  // 1. In-App Floating Toast Banner
+  if (inAppToastListener) {
+    inAppToastListener({ title, body });
+  }
+
+  // 2. Browser System Notification if allowed
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification(title, {
+        body,
+        icon: './icon.svg',
+        badge: './icon.svg',
+      });
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -40,25 +80,19 @@ export function showGiftReceivedNotification(senderName: string, userName?: stri
   sounds.playNotificationChime();
   const randomLine = EMOTIONAL_GIFT_LINES[Math.floor(Math.random() * EMOTIONAL_GIFT_LINES.length)];
   const title = `🎁 ${userName ? `Hey ${userName}!` : 'Surprise!'} From ${senderName}`;
+  showNotificationDirect(title, randomLine);
+}
 
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      new Notification(title, {
-        body: randomLine,
-        icon: './icon.svg',
-        badge: './icon.svg',
-      });
-    } catch {
-      // Notification fallback
-    }
-  }
+export function showChatMessageNotification(senderName: string, textSnippet: string) {
+  sounds.playNotificationChime();
+  const title = `🪄 New GIFTU Message from ${senderName}`;
+  showNotificationDirect(title, textSnippet);
 }
 
 /**
  * Initializes the daily care schedule checks (Morning, Afternoon Water, Night)
  */
 export function initDailyCareScheduler(userName: string) {
-  // Check every hour
   setInterval(() => {
     const now = new Date();
     const hour = now.getHours();
@@ -87,22 +121,11 @@ export function initDailyCareScheduler(userName: string) {
       localStorage.setItem('gifti_last_daily_care_type', 'night');
       localStorage.setItem('gifti_last_daily_care_date', todayStr);
     }
-  }, 1000 * 60 * 15); // Every 15 minutes
+  }, 1000 * 60 * 15); // Check every 15 minutes
 }
 
 function triggerDailyCareAlert(type: 'morning' | 'water' | 'night', userName: string) {
-  sounds.playNotificationChime();
   const pool = DAILY_CARE_MESSAGES[type];
   const msg = pool[Math.floor(Math.random() * pool.length)];
-
-  if ('Notification' in window && Notification.permission === 'granted') {
-    try {
-      new Notification(`Gifti Daily Care • ${userName || 'Dearest One'}`, {
-        body: msg,
-        icon: './icon.svg',
-      });
-    } catch {
-      // ignore
-    }
-  }
+  showNotificationDirect(`Gifti Daily Care • ${userName || 'Dearest One'}`, msg);
 }

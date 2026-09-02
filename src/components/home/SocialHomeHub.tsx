@@ -5,6 +5,7 @@ import { useAudio } from '../../context/AudioContext';
 import { firestoreQueryCollection } from '../../services/firebase';
 import { toggleFollowUser, isUserFollowing } from '../../services/followService';
 import { FollowYaariModal } from './FollowYaariModal';
+import { UserProfileViewModal } from '../profile/UserProfileViewModal';
 import {
   Sparkles,
   Search,
@@ -26,7 +27,7 @@ import {
 interface SocialHomeHubProps {
   currentUser: UserProfile;
   onOpenSideDrawer: () => void;
-  onOpenVipCard: () => void;
+  onOpenVipCard: (user?: UserProfile) => void;
   onOpenChatWithUser: (user: { giftiId: string; name: string; avatarUrl?: string }) => void;
   onStartCreateGift: (target?: { giftiId: string; name: string }) => void;
   onOpenProfile: () => void;
@@ -51,6 +52,7 @@ export const SocialHomeHub: React.FC<SocialHomeHubProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [yaariModalTarget, setYaariModalTarget] = useState<string | null>(null);
+  const [selectedUserForProfile, setSelectedUserForProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     async function loadDirectory() {
@@ -58,6 +60,8 @@ export const SocialHomeHub: React.FC<SocialHomeHubProps> = ({
       setAllUsers(users as unknown as UserProfile[]);
     }
     loadDirectory();
+    const timer = setInterval(loadDirectory, 5000); // 5s fast live database discovery
+    return () => clearInterval(timer);
   }, []);
 
   // Instagram-style letter-by-letter live substring search
@@ -94,6 +98,28 @@ export const SocialHomeHub: React.FC<SocialHomeHubProps> = ({
         />
       )}
 
+      {/* Instagram-Style Public Profile View Modal */}
+      {selectedUserForProfile && (
+        <UserProfileViewModal
+          user={selectedUserForProfile}
+          currentUser={currentUser}
+          onClose={() => setSelectedUserForProfile(null)}
+          onOpenChat={(user) => {
+            setSelectedUserForProfile(null);
+            onOpenChatWithUser(user);
+          }}
+          onSendGift={(target) => {
+            setSelectedUserForProfile(null);
+            onStartCreateGift(target);
+          }}
+          onToggleFollow={handleFollowClick}
+          onViewVipCard={(user) => {
+            setSelectedUserForProfile(null);
+            onOpenVipCard(user);
+          }}
+        />
+      )}
+
       {/* 1. TOP BAR: SEARCH ON TOP + LEFT DRAWER MENU + RIGHT VIP CARD TRIGGER */}
       <div className="flex items-center gap-3">
         
@@ -120,7 +146,7 @@ export const SocialHomeHub: React.FC<SocialHomeHubProps> = ({
 
         {/* Right VIP Card & Avatar Badge */}
         <button
-          onClick={onOpenVipCard}
+          onClick={() => onOpenVipCard(currentUser)}
           className="relative group p-1 rounded-2xl bg-gradient-to-tr from-amber-400 to-rose-500 border border-amber-400/60 shadow-lg shrink-0 hover:scale-105 active:scale-95 transition-all"
           title="My 3D VIP Card"
         >
@@ -202,7 +228,7 @@ export const SocialHomeHub: React.FC<SocialHomeHubProps> = ({
                 {language === 'hi' ? 'GIFTU मैजिक चैट 🪄' : 'GIFTU Magic Chat 🪄'}
               </h3>
               <p className="text-[11px] text-gray-400">
-                Flying box, Cracker burst & 24h purge
+                Flying words, 10-Photo Memories & 24h purge
               </p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-cyan-400 flex items-center justify-center text-2xl shadow-lg shrink-0">
@@ -312,15 +338,24 @@ export const SocialHomeHub: React.FC<SocialHomeHubProps> = ({
                   key={u.id}
                   className="p-3.5 rounded-2xl bg-[#110D26] border border-white/10 hover:border-rose-500/40 transition-all shadow-md flex items-center justify-between gap-3 group"
                 >
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="w-12 h-12 rounded-2xl overflow-hidden border border-white/20 shrink-0">
+                  {/* Tap User Card to open Instagram-Style Public Profile */}
+                  <div
+                    onClick={() => {
+                      playSparkle();
+                      setSelectedUserForProfile(u);
+                    }}
+                    className="flex items-center gap-3 overflow-hidden cursor-pointer flex-1"
+                  >
+                    <div className="w-12 h-12 rounded-2xl overflow-hidden border border-white/20 shrink-0 group-hover:border-amber-400 transition-colors">
                       <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="overflow-hidden">
-                      <h4 className="text-sm font-bold text-white truncate">{u.name}</h4>
+                      <h4 className="text-sm font-bold text-white truncate group-hover:text-amber-300 transition-colors">
+                        {u.name}
+                      </h4>
                       <p className="text-xs text-amber-300 font-mono truncate">@{u.giftiId}</p>
                       <p className="text-[10px] text-gray-400 truncate">
-                        {u.city ? `📍 ${u.city}` : 'Member of Gifti'}
+                        {u.bio ? u.bio.slice(0, 30) + '...' : u.city ? `📍 ${u.city}` : 'VIP Member'}
                       </p>
                     </div>
                   </div>

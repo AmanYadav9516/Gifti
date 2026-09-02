@@ -1,81 +1,104 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
-    <!-- Background Gradient -->
-    <radialGradient id="bgGlow" cx="50%" cy="35%" r="65%">
-      <stop offset="0%" stop-color="#2D1145" />
-      <stop offset="60%" stop-color="#140A26" />
-      <stop offset="100%" stop-color="#080410" />
+    <!-- Background Luxury Gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#2D0B4E"/>
+      <stop offset="50%" stop-color="#140626"/>
+      <stop offset="100%" stop-color="#07020F"/>
     </radialGradient>
 
-    <!-- Luxury Gold & Rose Gradient -->
-    <linearGradient id="goldRose" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFE27A" />
-      <stop offset="45%" stop-color="#FF5E86" />
-      <stop offset="80%" stop-color="#E11D48" />
-      <stop offset="100%" stop-color="#9333EA" />
+    <!-- Neon RGB Laser Border Gradient -->
+    <linearGradient id="laserGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF4D6D"/>
+      <stop offset="30%" stop-color="#FFD700"/>
+      <stop offset="70%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#C084FC"/>
     </linearGradient>
 
-    <!-- Neon Glow Filter -->
+    <!-- Metallic Gold Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF3B0"/>
+      <stop offset="35%" stop-color="#FFD700"/>
+      <stop offset="70%" stop-color="#E5A910"/>
+      <stop offset="100%" stop-color="#996515"/>
+    </linearGradient>
+
+    <!-- Rose Glow Gradient -->
+    <linearGradient id="roseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF758F"/>
+      <stop offset="50%" stop-color="#FF4D6D"/>
+      <stop offset="100%" stop-color="#C9184A"/>
+    </linearGradient>
+
+    <!-- Glow Filter -->
     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feGaussianBlur stdDeviation="10" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
 
-    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#FF4D6D" flood-opacity="0.35" />
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
   </defs>
 
-  <!-- App Icon Squircle Base -->
-  <rect width="512" height="512" rx="120" fill="url(#bgGlow)" />
+  <!-- Squircle App Background -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bgGrad)"/>
   
-  <!-- Outer Ambient Border Ring -->
-  <rect width="504" height="504" x="4" y="4" rx="116" fill="none" stroke="url(#goldRose)" stroke-width="4" stroke-opacity="0.4" />
+  <!-- Outer RGB Laser Border -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="none" stroke="url(#laserGrad)" stroke-width="8" opacity="0.9" filter="url(#glow)"/>
+  <rect x="36" y="36" width="440" height="440" rx="100" fill="none" stroke="#FFFFFF" stroke-width="1.5" opacity="0.2"/>
 
-  <!-- Stylized Letter 'G' with Gift Ribbon & Heart Charm -->
-  <g filter="url(#subtleShadow)">
-    
-    <!-- Outer 'G' Arc -->
-    <path
-      d="M 330 160 
-         C 285 110, 185 110, 140 165
-         C 90 225, 90 310, 140 365
-         C 195 425, 305 425, 355 365
-         C 375 340, 385 305, 385 270
-         L 255 270"
-      fill="none"
-      stroke="url(#goldRose)"
-      stroke-width="46"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
+  <!-- Ambient Glow Behind "G" -->
+  <circle cx="256" cy="270" r="140" fill="#FF4D6D" opacity="0.25" filter="url(#softGlow)"/>
+  <circle cx="256" cy="230" r="110" fill="#FFD700" opacity="0.2" filter="url(#softGlow)"/>
 
-    <!-- Center Gift Heart Charm on 'G' -->
-    <g transform="translate(285, 270) scale(1.1)">
-      <!-- Little Floating Heart inside G -->
-      <path
-        d="M 0 -12
-           C -12 -28, -32 -18, -32 4
-           C -32 24, 0 46, 0 46
-           C 0 46, 32 24, 32 4
-           C 32 -18, 12 -28, 0 -12 Z"
-        fill="url(#goldRose)"
-        filter="url(#glow)"
-      />
-    </g>
-
-    <!-- Top Sparkle Star -->
-    <path
-      d="M 380 120 Q 380 145 405 145 Q 380 145 380 170 Q 380 145 355 145 Q 380 145 380 120 Z"
-      fill="#FFE27A"
-      filter="url(#glow)"
-    />
-
-    <!-- Small Sparkle Star -->
-    <path
-      d="M 130 380 Q 130 395 145 395 Q 130 395 130 410 Q 130 395 115 395 Q 130 395 130 380 Z"
-      fill="#FF85A1"
-      opacity="0.8"
-    />
+  <!-- Golden Crown on Top of G -->
+  <g transform="translate(186, 95) scale(0.9)" filter="url(#glow)">
+    <path d="M 0 55 L 20 15 L 75 42 L 130 15 L 150 55 Z" fill="url(#goldGrad)" stroke="#FFF" stroke-width="1.5"/>
+    <!-- Jewels on Crown -->
+    <circle cx="20" cy="15" r="7" fill="#FF4D6D"/>
+    <circle cx="75" cy="42" r="8" fill="#38BDF8"/>
+    <circle cx="130" cy="15" r="7" fill="#FF4D6D"/>
   </g>
+
+  <!-- 3D Luxury Stylized Letter "G" -->
+  <g filter="url(#glow)">
+    <!-- Main G Path -->
+    <path d="M 335 220 
+             C 320 180, 275 165, 230 175 
+             C 175 188, 140 235, 140 295 
+             C 140 365, 185 410, 260 410 
+             C 330 410, 365 375, 370 315 
+             L 260 315 
+             L 260 275 
+             L 405 275 
+             C 405 385, 345 445, 255 445 
+             C 155 445, 100 380, 100 290 
+             C 100 205, 155 140, 245 140 
+             C 305 140, 360 165, 385 210 Z" 
+          fill="url(#goldGrad)" 
+          stroke="#FFF" 
+          stroke-width="2"/>
+  </g>
+
+  <!-- Heart Inside G Center -->
+  <path d="M 285 240 
+           C 285 225, 270 215, 255 225 
+           C 240 215, 225 225, 225 240 
+           C 225 260, 255 280, 255 280 
+           C 255 280, 285 260, 285 240 Z" 
+        fill="url(#roseGrad)" 
+        filter="url(#glow)"
+        transform="translate(18, 6) scale(1.1)"/>
+
+  <!-- 4-Point Magic Sparkles -->
+  <!-- Top Right Sparkle -->
+  <path d="M 395 125 Q 395 150 420 150 Q 395 150 395 175 Q 395 150 370 150 Q 395 150 395 125 Z" fill="#FFD700" filter="url(#glow)"/>
+  
+  <!-- Left Sparkle -->
+  <path d="M 115 185 Q 115 200 130 200 Q 115 200 115 215 Q 115 200 100 200 Q 115 200 115 185 Z" fill="#38BDF8" filter="url(#glow)"/>
+
+  <!-- Bottom Right Mini Sparkle -->
+  <path d="M 390 380 Q 390 392 402 392 Q 390 392 390 404 Q 390 392 378 392 Q 390 392 390 380 Z" fill="#FF758F" filter="url(#glow)"/>
 </svg>

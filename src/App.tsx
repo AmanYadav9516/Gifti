@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GiftData, Occasion, GiftType, WorldTheme, Relationship, UserProfile } from './types/gift';
+import { GiftData, Occasion, GiftType, WorldTheme, Relationship, UserProfile, ChatTheme } from './types/gift';
 import { useLanguage } from './context/LanguageContext';
 import { useAudio } from './context/AudioContext';
 import { Header } from './components/common/Header';
@@ -13,6 +13,9 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { BirthdaySurpriseModal } from './components/common/BirthdaySurpriseModal';
 import { InviteModal } from './components/home/InviteModal';
 import { UserProfileModal } from './components/home/UserProfileModal';
+import { ChatThemeModal } from './components/home/ChatThemeModal';
+import { FeedbackModal } from './components/home/FeedbackModal';
+import { NetworkErrorNotice } from './components/common/NetworkErrorNotice';
 
 // Creator Components
 import { OccasionSelector } from './components/creator/OccasionSelector';
@@ -26,13 +29,19 @@ import { ShareModal } from './components/creator/ShareModal';
 import { GiftJourney } from './components/receiver/GiftJourney';
 import { loadGiftFromCurrentUrl } from './services/shareService';
 import { getCachedCurrentUser, isUserBirthdayToday, clearUserSession } from './services/authService';
-import { initDailyCareScheduler, requestNotificationPermission } from './services/notificationService';
+import {
+  initDailyCareScheduler,
+  registerInAppToastListener,
+  unregisterInAppToastListener,
+} from './services/notificationService';
 import {
   Sparkles,
   Sliders,
   Loader2,
   ArrowLeft,
   Eye,
+  Bell,
+  X,
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -51,13 +60,19 @@ export const App: React.FC = () => {
 
   // Modals & Navigation Overlays
   const [isSideDrawerOpen, setIsSideDrawerOpen] = useState(false);
-  const [showVipCardModal, setShowVipCardModal] = useState(false);
+  const [selectedVipUser, setSelectedVipUser] = useState<UserProfile | null>(null);
   const [activeChatTarget, setActiveChatTarget] = useState<{ giftiId: string; name: string; avatarUrl?: string } | null>(null);
+  const [chatTheme, setChatTheme] = useState<ChatTheme>('galaxy');
+  const [showChatThemeModal, setShowChatThemeModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showBirthdayModal, setShowBirthdayModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  // In-App Toast Notification
+  const [inAppToast, setInAppToast] = useState<{ title: string; body: string } | null>(null);
 
   // Creator Form State
   const [senderName, setSenderName] = useState('');
@@ -76,6 +91,87 @@ export const App: React.FC = () => {
   const [hasSecondGift, setHasSecondGift] = useState(false);
   const [secondaryGiftType, setSecondaryGiftType] = useState<GiftType>('chocolate');
 
+  // Load chat theme from local storage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('gifti_chat_theme') as ChatTheme;
+    if (savedTheme) setChatTheme(savedTheme);
+  }, []);
+
+  // In-App Floating Toast Listener
+  useEffect(() => {
+    registerInAppToastListener((toast) => {
+      setInAppToast(toast);
+      setTimeout(() => {
+        setInAppToast(null);
+      }, 5000);
+    });
+
+    return () => {
+      unregisterInAppToastListener();
+    };
+  }, []);
+
+  // ANDROID PHONE HARDWARE BACK BUTTON / BROWSER POPSTATE HANDLER
+  useEffect(() => {
+    // Push an initial history state
+    window.history.pushState({ page: 'root' }, '');
+
+    const handlePopState = () => {
+      // Check if any modal is open and close it first
+      if (selectedVipUser) {
+        setSelectedVipUser(null);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (activeChatTarget) {
+        setActiveChatTarget(null);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (showChatThemeModal) {
+        setShowChatThemeModal(false);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (showFeedbackModal) {
+        setShowFeedbackModal(false);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (showAdminPanel) {
+        setShowAdminPanel(false);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (showInviteModal) {
+        setShowInviteModal(false);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (showProfileModal) {
+        setShowProfileModal(false);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (showBirthdayModal) {
+        setShowBirthdayModal(false);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (showShareModal) {
+        setShowShareModal(false);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (isSideDrawerOpen) {
+        setIsSideDrawerOpen(false);
+        window.history.pushState({ page: 'root' }, '');
+      } else if (viewMode === 'create' || viewMode === 'preview') {
+        setViewMode('hub');
+        window.history.pushState({ page: 'root' }, '');
+      } else {
+        window.history.pushState({ page: 'root' }, '');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [
+    selectedVipUser,
+    activeChatTarget,
+    showChatThemeModal,
+    showFeedbackModal,
+    showAdminPanel,
+    showInviteModal,
+    showProfileModal,
+    showBirthdayModal,
+    showShareModal,
+    isSideDrawerOpen,
+    viewMode,
+  ]);
+
   // Check persistent session & URL on initial mount
   useEffect(() => {
     const cached = getCachedCurrentUser();
@@ -83,7 +179,6 @@ export const App: React.FC = () => {
       setCurrentUser(cached);
       setSenderName(cached.name);
       initDailyCareScheduler(cached.name);
-      requestNotificationPermission();
 
       if (isUserBirthdayToday(cached.dob)) {
         setShowBirthdayModal(true);
@@ -115,7 +210,6 @@ export const App: React.FC = () => {
     setSenderName(user.name);
     setShowAuthModal(false);
     initDailyCareScheduler(user.name);
-    requestNotificationPermission();
     if (isUserBirthdayToday(user.dob)) {
       setShowBirthdayModal(true);
     }
@@ -153,6 +247,11 @@ export const App: React.FC = () => {
     setShowProfileModal(false);
     setShowAuthModal(true);
     setViewMode('hub');
+  };
+
+  const handleSelectChatTheme = (theme: ChatTheme) => {
+    setChatTheme(theme);
+    localStorage.setItem('gifti_chat_theme', theme);
   };
 
   // Construct active gift object
@@ -232,15 +331,46 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#080516] text-white flex flex-col justify-between selection:bg-rose-500">
       
+      {/* Offline Network Error Recovery Banner */}
+      <NetworkErrorNotice />
+
+      {/* In-App Floating Notification Toast */}
+      {inAppToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-md p-3.5 rounded-2xl bg-[#160B2C]/95 border-2 border-amber-400/80 shadow-2xl backdrop-blur-2xl text-white flex items-center justify-between gap-3 animate-slide-down">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="p-2 rounded-xl bg-amber-400/20 text-amber-300 shrink-0">
+              <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div className="overflow-hidden">
+              <h4 className="text-xs font-black text-amber-300 leading-tight truncate">
+                {inAppToast.title}
+              </h4>
+              <p className="text-[11px] text-gray-200 leading-tight line-clamp-2">
+                {inAppToast.body}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setInAppToast(null)}
+            className="p-1 rounded-full text-gray-400 hover:text-white"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Side Drawer Left Menu */}
       {currentUser && (
         <SideDrawer
           isOpen={isSideDrawerOpen}
           currentUser={currentUser}
           onClose={() => setIsSideDrawerOpen(false)}
-          onOpenVipCard={() => setShowVipCardModal(true)}
+          onOpenVipCard={() => setSelectedVipUser(currentUser)}
           onOpenInvite={() => setShowInviteModal(true)}
           onOpenAdmin={() => setShowAdminPanel(true)}
+          onOpenEditProfile={() => setShowProfileModal(true)}
+          onOpenChatTheme={() => setShowChatThemeModal(true)}
+          onOpenFeedback={() => setShowFeedbackModal(true)}
           onLogout={handleLogout}
         />
       )}
@@ -257,7 +387,7 @@ export const App: React.FC = () => {
           <SocialHomeHub
             currentUser={currentUser}
             onOpenSideDrawer={() => setIsSideDrawerOpen(true)}
-            onOpenVipCard={() => setShowVipCardModal(true)}
+            onOpenVipCard={(u) => setSelectedVipUser(u || currentUser)}
             onOpenChatWithUser={(user) => setActiveChatTarget(user)}
             onStartCreateGift={handleStartCreateGift}
             onOpenProfile={() => setShowProfileModal(true)}
@@ -443,10 +573,10 @@ export const App: React.FC = () => {
       )}
 
       {/* 2. 3D Holographic VIP Card Modal */}
-      {showVipCardModal && currentUser && (
+      {selectedVipUser && (
         <GiftiVipCardModal
-          user={currentUser}
-          onClose={() => setShowVipCardModal(false)}
+          user={selectedVipUser}
+          onClose={() => setSelectedVipUser(null)}
         />
       )}
 
@@ -455,6 +585,7 @@ export const App: React.FC = () => {
         <GiftuChatModal
           currentUser={currentUser}
           targetUser={activeChatTarget}
+          chatTheme={chatTheme}
           onClose={() => setActiveChatTarget(null)}
           onSendDirectGift={(giftiId, name) => {
             setActiveChatTarget(null);
@@ -463,12 +594,29 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* 4. Secret Admin Control Panel */}
+      {/* 4. Chat Theme Modal */}
+      {showChatThemeModal && (
+        <ChatThemeModal
+          currentTheme={chatTheme}
+          onClose={() => setShowChatThemeModal(false)}
+          onSelectTheme={handleSelectChatTheme}
+        />
+      )}
+
+      {/* 5. Feedback & Star Rating Modal */}
+      {showFeedbackModal && currentUser && (
+        <FeedbackModal
+          currentUser={currentUser}
+          onClose={() => setShowFeedbackModal(false)}
+        />
+      )}
+
+      {/* 6. Secret Admin Control Panel */}
       {showAdminPanel && (
         <AdminDashboard onClose={() => setShowAdminPanel(false)} />
       )}
 
-      {/* 5. 12:01 AM Birthday Surprise */}
+      {/* 7. 12:01 AM Birthday Surprise */}
       {showBirthdayModal && currentUser && (
         <BirthdaySurpriseModal
           user={currentUser}
@@ -476,7 +624,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* 6. Invite Modal */}
+      {/* 8. Invite Modal */}
       {showInviteModal && currentUser && (
         <InviteModal
           currentUser={currentUser}
@@ -484,7 +632,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* 7. User Profile Modal */}
+      {/* 9. User Profile Edit Modal */}
       {showProfileModal && currentUser && (
         <UserProfileModal
           currentUser={currentUser}
@@ -497,7 +645,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* 8. Share Modal */}
+      {/* 10. Share Modal */}
       {showShareModal && (
         <ShareModal
           gift={currentGiftData}

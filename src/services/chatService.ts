@@ -35,6 +35,40 @@ export async function sendChatMessage(msg: Omit<ChatMessage, 'id' | 'createdAt' 
 }
 
 /**
+ * Sends up to 10 Memory Photos in Chat with 24-hour lifecycle
+ */
+export async function sendChatMemoryPhotos(
+  conversationId: string,
+  sender: { id: string; name: string; giftiId: string },
+  receiverGiftiId: string,
+  photos: string[]
+): Promise<ChatMessage> {
+  const msgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+  const now = Date.now();
+  const expiresAt = now + 24 * 60 * 60 * 1000; // 24 hours auto-delete
+
+  const memoryMessage: ChatMessage = {
+    id: msgId,
+    conversationId,
+    senderId: sender.id,
+    senderName: sender.name,
+    senderGiftiId: sender.giftiId,
+    receiverGiftiId,
+    text: `📸 Shared ${photos.length} Memory Moments ✨`,
+    photos,
+    mode: 'magic',
+    privacy: 'friendly',
+    expiresAt,
+    createdAt: now,
+  };
+
+  await firestoreSetDoc('chat_messages', msgId, memoryMessage as unknown as Record<string, unknown>);
+  saveLocalMessage(memoryMessage);
+
+  return memoryMessage;
+}
+
+/**
  * Sends a Reaction Gift on a message
  */
 export async function sendReactionGift(conversationId: string, msgId: string, reaction: ReactionType) {
@@ -63,19 +97,26 @@ export async function getConversationPrivateMode(convId: string): Promise<boolea
 }
 
 /**
- * Live Typing status (shows 🫰🫰🫰 on receiver end)
+ * REAL-TIME FIRESTORE TYPING STATUS (Synced over internet so both devices see 🫰🫰🫰)
  */
 export async function setLiveTypingStatus(convId: string, giftiId: string, isTyping: boolean) {
   try {
-    sessionStorage.setItem(`typing_${convId}_${giftiId}`, isTyping ? '1' : '0');
+    await firestoreSetDoc('conversation_typing', convId, {
+      typingGiftiId: isTyping ? giftiId : '',
+      timestamp: isTyping ? Date.now() : 0,
+    });
   } catch {
     // ignore
   }
 }
 
-export function getLiveTypingStatus(convId: string, oppositeGiftiId: string): boolean {
+export async function getLiveTypingStatus(convId: string, oppositeGiftiId: string): Promise<boolean> {
   try {
-    return sessionStorage.getItem(`typing_${convId}_${oppositeGiftiId}`) === '1';
+    const doc = await firestoreGetDoc('conversation_typing', convId);
+    if (!doc) return false;
+    const isTarget = String(doc.typingGiftiId || '').toLowerCase() === oppositeGiftiId.toLowerCase();
+    const isRecent = Date.now() - Number(doc.timestamp || 0) < 5000; // 5 seconds window
+    return isTarget && isRecent;
   } catch {
     return false;
   }

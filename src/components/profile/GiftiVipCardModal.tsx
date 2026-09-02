@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../../types/gift';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAudio } from '../../context/AudioContext';
@@ -8,12 +8,12 @@ import {
   Sparkles,
   Download,
   RotateCw,
-  Share2,
   Check,
   Award,
   Crown,
   Heart,
   QrCode,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface GiftiVipCardModalProps {
@@ -55,74 +55,103 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
       canvas.height = 1600;
       const ctx = canvas.getContext('2d');
 
-      if (ctx) {
-        // 1. Dark Luxury Gradient Background
-        const grad = ctx.createLinearGradient(0, 0, 1080, 1600);
-        grad.addColorStop(0, '#190A2E');
-        grad.addColorStop(0.5, '#0E071A');
-        grad.addColorStop(1, '#05020A');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 1080, 1600);
+      if (!ctx) {
+        setDownloading(false);
+        return;
+      }
 
-        // 2. Gold/Rose Neon Border
-        ctx.strokeStyle = '#FF4D6D';
-        ctx.lineWidth = 14;
-        ctx.strokeRect(40, 40, 1000, 1520);
+      // 1. Dark Luxury Matte Gradient Background
+      const grad = ctx.createLinearGradient(0, 0, 1080, 1600);
+      grad.addColorStop(0, '#160926');
+      grad.addColorStop(0.5, '#0B0414');
+      grad.addColorStop(1, '#040108');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1080, 1600);
 
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(60, 60, 960, 1480);
+      // Matte Grain Overlay
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+      for (let i = 0; i < 1600; i += 8) {
+        ctx.fillRect(0, i, 1080, 2);
+      }
 
-        // 3. Header Branding
-        ctx.fillStyle = '#FFE27A';
-        ctx.font = 'bold 36px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('GIFTI • OFFICIAL VIP IDENTITY CARD', 540, 140);
+      // 2. Double Neon & Metallic Gold Border
+      ctx.strokeStyle = '#FF4D6D';
+      ctx.lineWidth = 14;
+      ctx.strokeRect(40, 40, 1000, 1520);
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 22px sans-serif';
-        ctx.fillText('CRAFTED BY AAYU SOLUTION', 540, 185);
+      ctx.strokeStyle = '#FFD700';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(60, 60, 960, 1480);
 
-        // 4. User Name & ID
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 64px sans-serif';
-        ctx.fillText(user.name, 540, 520);
+      // 3. Header Branding
+      ctx.fillStyle = '#FFE27A';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GIFTI • OFFICIAL VIP IDENTITY CARD', 540, 140);
 
-        ctx.fillStyle = '#FFD700';
-        ctx.font = 'bold 42px monospace';
-        ctx.fillText(`@${user.giftiId}`, 540, 590);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('CRAFTED BY AAYU SOLUTION', 540, 185);
 
+      // 4. User Name, ID & Bio
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 64px sans-serif';
+      ctx.fillText(user.name, 540, 480);
+
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 40px monospace';
+      ctx.fillText(`@${user.giftiId}`, 540, 550);
+
+      if (user.bio) {
         ctx.fillStyle = '#E2E8F0';
-        ctx.font = '32px sans-serif';
-        ctx.fillText(`📍 ${user.city || 'India'}  •  Member of Gifti World`, 540, 650);
+        ctx.font = 'italic 26px sans-serif';
+        ctx.fillText(`"${user.bio.slice(0, 60)}"`, 540, 610);
+      }
 
-        // 5. Card QR Code
-        if (qrCodeUrl) {
-          const img = new Image();
-          img.src = qrCodeUrl;
-          img.onload = () => {
-            ctx.drawImage(img, 365, 780, 350, 350);
+      ctx.fillStyle = '#94A3B8';
+      ctx.font = '28px sans-serif';
+      ctx.fillText(`📍 ${user.city || 'India'}  •  VIP Member of Gifti World`, 540, 670);
 
-            ctx.fillStyle = '#FFE27A';
-            ctx.font = 'bold 28px sans-serif';
-            ctx.fillText('SCAN TO JOIN & CONNECT', 540, 1200);
+      const triggerSave = () => {
+        ctx.fillStyle = '#FFE27A';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillText('SCAN TO JOIN & CONNECT ON GIFTI', 540, 1200);
 
-            ctx.fillStyle = '#CBD5E1';
-            ctx.font = 'italic 30px serif';
-            ctx.fillText('"Thanks for becoming a member of Gifti Family ❤️"', 540, 1340);
+        ctx.fillStyle = '#CBD5E1';
+        ctx.font = 'italic 30px serif';
+        ctx.fillText('"Thanks for becoming a member of Gifti Family ❤️"', 540, 1340);
 
-            // Export as PNG
-            const dataUrl = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = `Gifti_VIP_Card_${user.giftiId}.png`;
-            link.href = dataUrl;
-            link.click();
+        ctx.fillStyle = '#FF4D6D';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText('100% PRIVATE & ENCRYPTED SOCIAL NETWORK', 540, 1440);
 
-            setDownloading(false);
-            setDownloadSuccess(true);
-            setTimeout(() => setDownloadSuccess(false), 3000);
-          };
-        }
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `GIFTI_VIP_CARD_${user.giftiId}.png`;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setDownloading(false);
+        setDownloadSuccess(true);
+        setTimeout(() => setDownloadSuccess(false), 3000);
+      };
+
+      // Draw QR Code if available
+      if (qrCodeUrl) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = qrCodeUrl;
+        img.onload = () => {
+          ctx.drawImage(img, 365, 780, 350, 350);
+          triggerSave();
+        };
+        img.onerror = () => {
+          triggerSave();
+        };
+      } else {
+        triggerSave();
       }
     } catch (err) {
       console.warn('Canvas export fallback:', err);
@@ -152,14 +181,14 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
             Your 3D Holographic Card ✨
           </h2>
           <p className="text-[11px] text-gray-300">
-            Tap card to flip front/back • Download & share on WhatsApp Status!
+            Tap card to flip • Download & share on WhatsApp Status!
           </p>
         </div>
 
         {/* 3D FLOATING & FLIPPING CARD CONTAINER */}
         <div
           onClick={handleFlipCard}
-          className="relative w-[300px] sm:w-[340px] h-[460px] cursor-pointer group transition-transform duration-500 [perspective:1000px] animate-float"
+          className="relative w-[300px] sm:w-[340px] h-[470px] cursor-pointer group transition-transform duration-500 [perspective:1000px] animate-float"
         >
           <div
             className={`relative w-full h-full rounded-3xl transition-transform duration-700 [transform-style:preserve-3d] shadow-2xl ${
@@ -167,10 +196,11 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
             }`}
           >
             
-            {/* FRONT SIDE */}
-            <div className="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-[#1F0A38] via-[#100620] to-[#06020C] border-2 border-rose-500/50 p-6 flex flex-col justify-between [backface-visibility:hidden] shadow-2xl shadow-rose-500/20 overflow-hidden">
+            {/* FRONT SIDE (Matte Finish + Running Laser Border) */}
+            <div className="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-[#1C0933] via-[#0E041A] to-[#040108] border-2 border-rose-500/50 p-6 flex flex-col justify-between [backface-visibility:hidden] shadow-2xl shadow-rose-500/20 overflow-hidden relative">
               
-              {/* Neon Laser Glowing Border */}
+              {/* Running Laser Light Beam Effect */}
+              <div className="absolute inset-0 rounded-3xl border-2 border-transparent bg-gradient-to-r from-transparent via-amber-400/40 to-transparent animate-pulse pointer-events-none" />
               <div className="absolute inset-1 rounded-[22px] border border-amber-400/30 pointer-events-none" />
 
               {/* Holographic Top Bar */}
@@ -196,7 +226,7 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
               <div className="flex flex-col items-center space-y-2 z-10">
                 <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-amber-400 shadow-xl">
                   <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
-                  <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] font-bold py-0.5 text-amber-300">
+                  <div className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] font-bold py-0.5 text-amber-300">
                     VIP PASS
                   </div>
                 </div>
@@ -204,7 +234,12 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
                 <div>
                   <h4 className="text-lg font-black text-white">{user.name}</h4>
                   <p className="text-xs font-mono text-amber-300 font-bold">@{user.giftiId}</p>
-                  <p className="text-[10px] text-gray-400">📍 {user.city || 'India'}</p>
+                  {user.bio && (
+                    <p className="text-[11px] text-gray-300 italic max-w-[220px] mx-auto truncate pt-0.5">
+                      "{user.bio}"
+                    </p>
+                  )}
+                  <p className="text-[10px] text-gray-400 pt-0.5">📍 {user.city || 'India'}</p>
                 </div>
               </div>
 
@@ -230,8 +265,8 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
 
             </div>
 
-            {/* BACK SIDE */}
-            <div className="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-[#150728] via-[#0D041A] to-[#040108] border-2 border-amber-400/60 p-6 flex flex-col items-center justify-between [transform:rotateY(180deg)] [backface-visibility:hidden] shadow-2xl shadow-amber-500/20 overflow-hidden text-center">
+            {/* BACK SIDE (Matte Luxury) */}
+            <div className="absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-[#16062B] via-[#0B0216] to-[#040108] border-2 border-amber-400/60 p-6 flex flex-col items-center justify-between [transform:rotateY(180deg)] [backface-visibility:hidden] shadow-2xl shadow-amber-500/20 overflow-hidden text-center">
               
               <div className="absolute inset-1 rounded-[22px] border border-rose-500/30 pointer-events-none" />
 

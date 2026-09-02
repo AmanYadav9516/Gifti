@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserProfile } from '../../types/gift';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAudio } from '../../context/AudioContext';
+import { triggerNotificationPermission } from '../../services/notificationService';
 import {
   X,
   Crown,
@@ -12,7 +13,13 @@ import {
   LogOut,
   Sparkles,
   Heart,
-  Gift,
+  Palette,
+  Bell,
+  Star,
+  UserCheck,
+  Moon,
+  Sun,
+  User,
 } from 'lucide-react';
 
 interface SideDrawerProps {
@@ -22,6 +29,9 @@ interface SideDrawerProps {
   onOpenVipCard: () => void;
   onOpenInvite: () => void;
   onOpenAdmin: () => void;
+  onOpenEditProfile: () => void;
+  onOpenChatTheme: () => void;
+  onOpenFeedback: () => void;
   onLogout: () => void;
 }
 
@@ -32,12 +42,22 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
   onOpenVipCard,
   onOpenInvite,
   onOpenAdmin,
+  onOpenEditProfile,
+  onOpenChatTheme,
+  onOpenFeedback,
   onLogout,
 }) => {
   const { language, setLanguage } = useLanguage();
   const { playSparkle } = useAudio();
+  const [notifStatus, setNotifStatus] = useState<string>('idle');
 
   if (!isOpen) return null;
+
+  const handleEnableNotifs = async () => {
+    playSparkle();
+    const res = await triggerNotificationPermission();
+    setNotifStatus(res);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex select-none animate-fade-in">
@@ -46,12 +66,12 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
       <div onClick={onClose} className="fixed inset-0 bg-black/80 backdrop-blur-md" />
 
       {/* Drawer Container */}
-      <div className="relative w-72 sm:w-80 max-w-[85vw] h-full bg-[#0E0B1F] border-r border-white/10 p-5 flex flex-col justify-between text-white z-10 shadow-2xl animate-slide-right">
+      <div className="relative w-72 sm:w-80 max-w-[85vw] h-full bg-[#0E0B1F] border-r border-white/10 p-5 flex flex-col justify-between text-white z-10 shadow-2xl animate-slide-right overflow-y-auto">
         
-        <div className="space-y-6">
+        <div className="space-y-5">
           
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-400 p-[2px] shadow-lg">
                 <div className="w-full h-full bg-[#0E0B1F] rounded-[14px] flex items-center justify-center text-xl">
@@ -76,15 +96,23 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
             </button>
           </div>
 
-          {/* User Mini Card */}
-          <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+          {/* User Mini Card (Click to Edit Profile) */}
+          <div
+            onClick={() => {
+              onClose();
+              onOpenEditProfile();
+            }}
+            className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-3 cursor-pointer transition-all group"
+          >
             <div className="w-11 h-11 rounded-xl overflow-hidden border border-rose-400 shrink-0">
               <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-full h-full object-cover" />
             </div>
-            <div className="overflow-hidden">
-              <h4 className="text-xs font-bold text-white truncate">{currentUser.name}</h4>
+            <div className="overflow-hidden flex-1">
+              <h4 className="text-xs font-bold text-white truncate group-hover:text-amber-300 transition-colors">
+                {currentUser.name}
+              </h4>
               <p className="text-[10px] text-amber-300 font-mono truncate">@{currentUser.giftiId}</p>
-              <p className="text-[9px] text-gray-400">VIP Member</p>
+              <p className="text-[9px] text-gray-400">Edit Profile ✎</p>
             </div>
           </div>
 
@@ -103,7 +131,45 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
               <span>{language === 'hi' ? 'मेरा 3D VIP कार्ड' : 'My 3D Gifti VIP Card'}</span>
             </button>
 
-            {/* 2. Invite Friends */}
+            {/* 2. Notifications Trigger Button (User Gesture!) */}
+            <button
+              onClick={handleEnableNotifs}
+              className="w-full p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-gray-200 flex items-center justify-between transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Bell className="w-4 h-4 text-rose-400" />
+                <span>{language === 'hi' ? 'नोटिफ़िकेशन चालू करें 🔔' : 'Enable Notifications 🔔'}</span>
+              </div>
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-rose-500/30 text-rose-300 uppercase">
+                {notifStatus === 'granted' ? 'Active ✓' : 'Turn On'}
+              </span>
+            </button>
+
+            {/* 3. Chat Atmosphere / Theme */}
+            <button
+              onClick={() => {
+                onClose();
+                onOpenChatTheme();
+              }}
+              className="w-full p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-gray-200 flex items-center gap-3 transition-all"
+            >
+              <Palette className="w-4 h-4 text-cyan-400" />
+              <span>{language === 'hi' ? 'चैट थीम कस्टमाइज़ करें' : 'Chat Themes 🎨'}</span>
+            </button>
+
+            {/* 4. Feedback & Ratings */}
+            <button
+              onClick={() => {
+                onClose();
+                onOpenFeedback();
+              }}
+              className="w-full p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-gray-200 flex items-center gap-3 transition-all"
+            >
+              <Star className="w-4 h-4 text-amber-400" />
+              <span>{language === 'hi' ? 'रेटिंग व सुझाव (Feedback)' : 'Feedback & Ratings ⭐'}</span>
+            </button>
+
+            {/* 5. Invite Friends */}
             <button
               onClick={() => {
                 onClose();
@@ -115,7 +181,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
               <span>{language === 'hi' ? 'दोस्तों को इनवाइट करें' : 'Invite Your Heart Closer'}</span>
             </button>
 
-            {/* 3. Admin Panel (If admin) */}
+            {/* 6. Admin Panel (If admin) */}
             {currentUser.role === 'admin' && (
               <button
                 onClick={() => {
@@ -129,7 +195,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({
               </button>
             )}
 
-            {/* 4. Language Switcher */}
+            {/* 7. Language Switcher */}
             <button
               onClick={() => {
                 playSparkle();

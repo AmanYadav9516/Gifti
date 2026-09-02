@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../../types/gift';
-import { registerUserProfile, loginWithGiftiIdOrPhone, checkGiftiIdAvailability, getRandomDefaultAvatar } from '../../services/authService';
+import {
+  registerUserProfile,
+  loginWithGiftiIdOrPhone,
+  checkGiftiIdAvailability,
+  getRandomDefaultAvatar,
+  validateGiftiIdFormat,
+} from '../../services/authService';
 import { uploadImageToImgBB } from '../../services/imgbbService';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAudio } from '../../context/AudioContext';
@@ -17,6 +23,7 @@ import {
   Loader2,
   ShieldCheck,
   KeyRound,
+  FileText,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -35,8 +42,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   // Form Fields
   const [name, setName] = useState('');
   const [giftiId, setGiftiId] = useState('');
+  const [bio, setBio] = useState('');
   const [password, setPassword] = useState('');
   const [isIdAvailable, setIsIdAvailable] = useState<boolean | null>(null);
+  const [idFormatError, setIdFormatError] = useState<string | null>(null);
   const [checkingId, setCheckingId] = useState(false);
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState('male');
@@ -52,11 +61,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Real-time unique Gifti ID check
+  // Real-time unique & alphanumeric Gifti ID check
   useEffect(() => {
-    if (mode !== 'signup' || giftiId.length < 3) {
+    if (mode !== 'signup' || !giftiId) {
+      setIsIdAvailable(null);
+      setIdFormatError(null);
+      return;
+    }
+
+    const formatCheck = validateGiftiIdFormat(giftiId);
+    if (!formatCheck.valid) {
+      setIdFormatError(formatCheck.error || 'Must include letters and numbers');
       setIsIdAvailable(null);
       return;
+    } else {
+      setIdFormatError(null);
     }
 
     const timer = setTimeout(async () => {
@@ -64,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
       const available = await checkGiftiIdAvailability(giftiId);
       setIsIdAvailable(available);
       setCheckingId(false);
-    }, 450);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [giftiId, mode]);
@@ -89,8 +108,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (giftiId.length < 3) {
-      setErrorMsg(language === 'hi' ? 'Gifti ID कम से कम 3 अक्षरों की होनी चाहिए।' : 'Gifti ID must be at least 3 characters.');
+    const formatCheck = validateGiftiIdFormat(giftiId);
+    if (!formatCheck.valid) {
+      setErrorMsg(formatCheck.error || 'Invalid Gifti ID');
       return;
     }
 
@@ -109,6 +129,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
       const user = await registerUserProfile({
         name,
         giftiId,
+        bio: bio || '✨ Member of Gifti World • Spreading joy and surprises!',
         password,
         dob,
         gender,
@@ -174,7 +195,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
           </h2>
           <p className="text-xs text-gray-300">
             {mode === 'signup'
-              ? (language === 'hi' ? 'अपनी अनूठी Gifti ID और पासवर्ड बनाएं' : 'Create your unique Gifti ID and secure password')
+              ? (language === 'hi' ? 'अपनी अनूठी Alphanumeric Gifti ID (अक्षर + अंक) बनाएं' : 'Create your unique Alphanumeric Gifti ID (Letters + Numbers)')
               : (language === 'hi' ? 'अपनी Gifti ID और पासवर्ड से लॉगिन करें' : 'Login using your Gifti ID and Password')}
           </p>
         </div>
@@ -237,7 +258,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
               </span>
             </div>
 
-            {/* 1. Full Name & Gifti ID */}
+            {/* 1. Full Name & Alphanumeric Gifti ID */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-300 flex items-center gap-1">
@@ -264,6 +285,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                     <span className="text-[10px] text-gray-400 flex items-center gap-1">
                       <Loader2 className="w-2.5 h-2.5 animate-spin" /> checking...
                     </span>
+                  ) : idFormatError ? (
+                    <span className="text-[10px] text-amber-400">
+                      Need Letter & Number
+                    </span>
                   ) : isIdAvailable === true ? (
                     <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-0.5">
                       <CheckCircle2 className="w-2.5 h-2.5" /> Available ✓
@@ -279,12 +304,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                   required
                   value={giftiId}
                   onChange={(e) => setGiftiId(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                  placeholder="e.g. aman_gifts"
+                  placeholder="e.g. aman95 or gifti2026"
                   className={`w-full px-3.5 py-2 rounded-2xl bg-black/50 border text-sm text-white placeholder-gray-500 focus:outline-none transition-all ${
-                    isIdAvailable === true ? 'border-emerald-500' : isIdAvailable === false ? 'border-red-500' : 'border-white/15 focus:border-rose-400'
+                    isIdAvailable === true ? 'border-emerald-500' : isIdAvailable === false || idFormatError ? 'border-amber-500' : 'border-white/15 focus:border-rose-400'
                   }`}
                 />
+                <span className="text-[10px] text-gray-400 block">
+                  Must include both letters and numbers (e.g. aman95)
+                </span>
               </div>
+            </div>
+
+            {/* Bio / Description */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-amber-300 flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5" />
+                <span>About You / Bio (Optional)</span>
+              </label>
+              <input
+                type="text"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="e.g. Spreading smiles & 3D surprises! ✨"
+                className="w-full px-3.5 py-2 rounded-2xl bg-black/50 border border-white/15 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-rose-400"
+              />
             </div>
 
             {/* 2. Password Setup */}
@@ -410,7 +453,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || isIdAvailable === false}
+              disabled={loading || isIdAvailable === false || !!idFormatError}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 text-white font-black text-sm tracking-wider uppercase shadow-xl shadow-rose-500/30 hover:scale-[1.02] active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -440,7 +483,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 required
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
-                placeholder="e.g. aman_gifts or 9876543210"
+                placeholder="e.g. aman95 or 9876543210"
                 className="w-full px-4 py-2.5 rounded-2xl bg-black/50 border border-white/15 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-rose-400"
               />
             </div>

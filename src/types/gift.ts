@@ -27,6 +27,12 @@ export type WorldTheme =
   | 'christmas'
   | 'festive';
 
+export type ChatTheme = 
+  | 'galaxy'
+  | 'neon_rose'
+  | 'cyber_dark'
+  | 'sunset_gold';
+
 export type MessageTone = 
   | 'emotional'
   | 'funny'
@@ -68,7 +74,8 @@ export type Language = 'en' | 'hi';
 export interface UserProfile {
   id: string;
   name: string;
-  giftiId: string; // Unique, e.g. "aman_gifts"
+  giftiId: string; // Unique alphanumeric, e.g. "aman9516"
+  bio?: string; // Instagram-style profile description
   passwordHash?: string; // Secure password
   dob: string; // YYYY-MM-DD for 12:01 AM Birthday engine
   gender: 'male' | 'female' | 'other' | string;
@@ -96,10 +103,11 @@ export interface ChatMessage {
   senderGiftiId: string;
   receiverGiftiId: string;
   text: string;
+  photos?: string[]; // Array of up to 10 photos for 3D Flying Memories
   mode: 'magic' | 'classic';
   privacy: 'friendly' | 'private_1h';
   reaction?: ReactionType;
-  expiresAt?: number; // 1-hour for private, 24-hours for normal
+  expiresAt?: number; // 1-hour for private, 24-hours for normal/photos
   createdAt: number;
 }
 
@@ -125,5 +133,15 @@ export interface GiftData {
   secondGiftMessage?: string;
   enableAmbientMusic: boolean;
   scheduledFor?: number; // Timestamp for 12:01 AM Time-Capsule surprise mode
+  createdAt: number;
+}
+
+export interface FeedbackSubmission {
+  id: string;
+  userId: string;
+  userName: string;
+  giftiId: string;
+  rating: number; // 1 to 5 stars
+  feedback: string;
   createdAt: number;
 }

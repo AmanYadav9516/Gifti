@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProfile, ChatMessage, ReactionType } from '../../types/gift';
+import { UserProfile, ChatMessage, ReactionType, ChatTheme } from '../../types/gift';
 import {
   sendChatMessage,
+  sendChatMemoryPhotos,
   fetchConversationMessages,
   getConversationId,
   setLiveTypingStatus,
@@ -13,6 +14,7 @@ import {
 import { useLanguage } from '../../context/LanguageContext';
 import { useAudio } from '../../context/AudioContext';
 import { ReactionVfxOverlay } from './ReactionVfxOverlay';
+import { ChatPhotoMemoriesModal } from './ChatPhotoMemoriesModal';
 import {
   X,
   Send,
@@ -26,6 +28,8 @@ import {
   Gift,
   Flame,
   Smile,
+  Camera,
+  Image as ImageIcon,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -36,6 +40,7 @@ interface GiftuChatModalProps {
     name: string;
     avatarUrl?: string;
   };
+  chatTheme?: ChatTheme;
   onClose: () => void;
   onSendDirectGift: (giftiId: string, name: string) => void;
 }
@@ -54,11 +59,12 @@ const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
 export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
   currentUser,
   targetUser,
+  chatTheme = 'galaxy',
   onClose,
   onSendDirectGift,
 }) => {
   const { language } = useLanguage();
-  const { playSparkle, playUnbox, playReactionSound, playNotificationChime } = useAudio();
+  const { playSparkle, playUnbox, playReactionSound } = useAudio();
 
   const conversationId = getConversationId(currentUser.giftiId, targetUser.giftiId);
 
@@ -70,37 +76,44 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
   const [showReactionsBar, setShowReactionsBar] = useState(false);
   const [activeVfx, setActiveVfx] = useState<ReactionType | null>(null);
 
-  // GIFTU Animation States
+  // Photo Memories Modal States
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
+  const [viewingMemoryPhotos, setViewingMemoryPhotos] = useState<string[] | null>(null);
+
+  // GIFTU & Swirling 3D Flying Words Animation States
   const [isAnimatingGiftu, setIsAnimatingGiftu] = useState(false);
   const [animatingMsgText, setAnimatingMsgText] = useState('');
-  const [giftuStage, setGiftuStage] = useState<'wand_rotate' | 'box_morph' | 'burst_reveal' | 'idle'>('idle');
+  const [swirlingWords, setSwirlingWords] = useState<string[]>([]);
+  const [giftuStage, setGiftuStage] = useState<'swirling_words' | 'wand_rotate' | 'box_morph' | 'burst_reveal' | 'idle'>('idle');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Poll for messages, synchronized private mode, and typing state
+  // Real-time Firestore polling for messages, synchronized private mode, and typing state
   useEffect(() => {
     let isMounted = true;
 
     async function poll() {
-      const [msgs, privState] = await Promise.all([
+      const [msgs, privState, typingState] = await Promise.all([
         fetchConversationMessages(conversationId),
         getConversationPrivateMode(conversationId),
+        getLiveTypingStatus(conversationId, targetUser.giftiId),
       ]);
 
       if (isMounted) {
         setMessages(msgs);
         setIsPrivate(privState);
-        setIsOppositeTyping(getLiveTypingStatus(conversationId, targetUser.giftiId));
+        setIsOppositeTyping(typingState);
       }
     }
 
     poll();
-    const interval = setInterval(poll, 2500);
+    const interval = setInterval(poll, 2200);
     return () => {
       isMounted = false;
       clearInterval(interval);
+      setLiveTypingStatus(conversationId, currentUser.giftiId, false);
     };
-  }, [conversationId, targetUser.giftiId]);
+  }, [conversationId, targetUser.giftiId, currentUser.giftiId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -124,11 +137,20 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
     setActiveVfx(reaction);
     setShowReactionsBar(false);
     
-    // Find latest message to attach reaction
     if (messages.length > 0) {
       const latest = messages[messages.length - 1];
       await sendReactionGift(conversationId, latest.id, reaction);
     }
+  };
+
+  const handleSendMemoryPhotos = async (photos: string[]) => {
+    const sent = await sendChatMemoryPhotos(
+      conversationId,
+      { id: currentUser.id, name: currentUser.name, giftiId: currentUser.giftiId },
+      targetUser.giftiId,
+      photos
+    );
+    setMessages((prev) => [...prev, sent]);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -136,20 +158,27 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
     if (!inputText.trim()) return;
 
     const textToSend = inputText.trim();
+    const words = textToSend.split(' ');
     setInputText('');
     setLiveTypingStatus(conversationId, currentUser.giftiId, false);
 
     if (chatMode === 'magic') {
-      // 2-Way Synchronized GIFTU Sequence with Compact App-Icon Sized Box
+      // 3D Flying Words & GIFTU Synchronized Sequence
       setIsAnimatingGiftu(true);
       setAnimatingMsgText(textToSend);
-      setGiftuStage('wand_rotate');
+      setSwirlingWords(words);
+      setGiftuStage('swirling_words');
       playSparkle();
+
+      setTimeout(() => {
+        setGiftuStage('wand_rotate');
+        playSparkle();
+      }, 700);
 
       setTimeout(() => {
         setGiftuStage('box_morph');
         playSparkle();
-      }, 800);
+      }, 1400);
 
       setTimeout(() => {
         setGiftuStage('burst_reveal');
@@ -160,7 +189,7 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
           origin: { y: 0.5 },
           colors: ['#FFD700', '#FF4D6D', '#38BDF8', '#C77DFF'],
         });
-      }, 1600);
+      }, 2100);
 
       setTimeout(async () => {
         setIsAnimatingGiftu(false);
@@ -176,7 +205,7 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
           privacy: isPrivate ? 'private_1h' : 'friendly',
         });
         setMessages((prev) => [...prev, sent]);
-      }, 2400);
+      }, 2900);
 
     } else {
       // Classic Mode
@@ -201,6 +230,18 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
       {/* Live Reaction VFX Overlay */}
       {activeVfx && (
         <ReactionVfxOverlay reaction={activeVfx} onFinish={() => setActiveVfx(null)} />
+      )}
+
+      {/* 10-Photo Chat Memories Modal (Picker or Viewer) */}
+      {(showPhotoPicker || viewingMemoryPhotos) && (
+        <ChatPhotoMemoriesModal
+          onClose={() => {
+            setShowPhotoPicker(false);
+            setViewingMemoryPhotos(null);
+          }}
+          onSendPhotos={handleSendMemoryPhotos}
+          viewOnlyPhotos={viewingMemoryPhotos || undefined}
+        />
       )}
 
       <div className="relative w-full max-w-xl h-[92vh] sm:h-[88vh] rounded-3xl bg-[#0C091C] border border-rose-500/30 shadow-2xl flex flex-col overflow-hidden">
@@ -288,7 +329,7 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
             </button>
           </div>
 
-          {/* Synchronized Private Mode Toggle (Both convert!) */}
+          {/* Synchronized Private Mode Toggle */}
           <button
             onClick={handleTogglePrivateMode}
             className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all ${
@@ -300,12 +341,12 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
             {isPrivate ? (
               <>
                 <Flame className="w-3 h-3 text-red-400" />
-                <span>1-Hour Private Mode (Synced)</span>
+                <span>1-Hour Private (Synced)</span>
               </>
             ) : (
               <>
                 <Clock className="w-3 h-3 text-cyan-400" />
-                <span>24h Auto-Purge (Friendly)</span>
+                <span>24h Auto-Purge</span>
               </>
             )}
           </button>
@@ -329,25 +370,52 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
               </div>
               <p className="text-sm font-bold text-white">Start your GIFTU magical conversation!</p>
               <p className="text-xs max-w-xs text-gray-400">
-                Messages sent in Magic Mode transform into an app-icon-sized mystery box and reveal with fireworks!
+                Messages transform with 3D flying words and reveal with fireworks!
               </p>
             </div>
           ) : (
             messages.map((m) => {
               const isMe = m.senderGiftiId === currentUser.giftiId;
+              const hasPhotos = m.photos && m.photos.length > 0;
+
               return (
                 <div
                   key={m.id}
                   className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in`}
                 >
                   <div
-                    className={`max-w-[80%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-lg relative ${
+                    className={`max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed shadow-lg relative ${
                       isMe
                         ? 'bg-gradient-to-tr from-rose-600 to-pink-500 text-white rounded-br-none'
                         : 'bg-white/10 border border-white/15 text-white rounded-bl-none'
                     }`}
                   >
-                    <p className="font-medium">{m.text}</p>
+                    {/* PHOTO MEMORIES PREVIEW IN CHAT */}
+                    {hasPhotos ? (
+                      <div
+                        onClick={() => setViewingMemoryPhotos(m.photos!)}
+                        className="cursor-pointer space-y-2 group"
+                      >
+                        <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/20">
+                          {m.photos!.slice(0, 4).map((url, i) => (
+                            <div key={i} className="relative h-20 bg-black/40 overflow-hidden">
+                              <img src={url} alt="Memory" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                              {i === 3 && m.photos!.length > 4 && (
+                                <div className="absolute inset-0 bg-black/70 flex items-center justify-center text-xs font-bold text-amber-300">
+                                  +{m.photos!.length - 4} More
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs font-bold text-amber-300 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          <span>Tap to Open 3D Memory Showcase 📸</span>
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="font-medium">{m.text}</p>
+                    )}
 
                     {/* Reaction Badge if present */}
                     {m.reaction && (
@@ -371,7 +439,7 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
             })
           )}
 
-          {/* LIVE TYPING DISGUISE (RECEIVER SEES 🫰 🫰 🫰 🫰) */}
+          {/* REAL-TIME LIVE TYPING DISGUISE (RECEIVER SEES 🫰 🫰 🫰 🫰 🫰) */}
           {isOppositeTyping && (
             <div className="flex items-center gap-2 text-xs text-rose-300 p-2.5 rounded-2xl bg-white/5 border border-rose-500/30 w-max animate-pulse">
               <span className="text-base animate-bounce">🫰 🫰 🫰 🫰 🫰</span>
@@ -379,12 +447,32 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
             </div>
           )}
 
-          {/* 2-WAY LIVE GIFTU ANIMATION (COMPACT APP-ICON SIZED BOX) */}
+          {/* 3D SWIRLING WORDS & GIFTU ANIMATION */}
           {isAnimatingGiftu && (
             <div className="my-4 p-5 rounded-3xl bg-gradient-to-b from-purple-950/90 to-[#0F0B26] border-2 border-amber-400/50 shadow-2xl text-center space-y-3 animate-fade-in relative overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,215,0,0.15),transparent_70%)] pointer-events-none" />
 
-              {/* STAGE 1: GIFTU Mascot Waves Wand */}
+              {/* STAGE 1: 3D Swirling Flying Words in Air */}
+              {giftuStage === 'swirling_words' && (
+                <div className="space-y-3 py-3">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {swirlingWords.map((word, i) => (
+                      <span
+                        key={i}
+                        className="px-3 py-1 rounded-xl bg-gradient-to-r from-rose-500 to-amber-400 text-white font-black text-sm animate-bounce shadow-lg"
+                        style={{ animationDelay: `${i * 120}ms` }}
+                      >
+                        {word}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs font-bold text-amber-300 animate-pulse">
+                    Words swirling & flying through the air... ✨
+                  </p>
+                </div>
+              )}
+
+              {/* STAGE 2: GIFTU Mascot Waves Wand */}
               {giftuStage === 'wand_rotate' && (
                 <div className="space-y-2">
                   <div className="relative inline-block text-5xl animate-bounce">
@@ -394,11 +482,10 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
                   <h4 className="text-sm font-black text-amber-300 font-['Outfit']">
                     GIFTU is casting magic on your message... 🪄
                   </h4>
-                  <p className="text-xs text-gray-300 italic">"{animatingMsgText}"</p>
                 </div>
               )}
 
-              {/* STAGE 2: Sleek App-Icon Sized Mystery Box */}
+              {/* STAGE 3: Compact App-Icon Sized Box */}
               {giftuStage === 'box_morph' && (
                 <div className="space-y-2 flex flex-col items-center">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-500 to-amber-400 p-[2px] shadow-xl animate-bounce">
@@ -407,12 +494,12 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
                     </div>
                   </div>
                   <h4 className="text-xs font-black text-rose-300 font-['Outfit']">
-                    Message sealed inside the Glowing App-Icon Box! ✨
+                    Message sealed inside Glowing Box! ✨
                   </h4>
                 </div>
               )}
 
-              {/* STAGE 3: Fireworks Cracker Burst & Kinetic Reveal */}
+              {/* STAGE 4: Fireworks Cracker Burst & Neat Assembly */}
               {giftuStage === 'burst_reveal' && (
                 <div className="space-y-2">
                   <div className="text-5xl animate-ping">🎆</div>
@@ -447,7 +534,7 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
           </div>
         )}
 
-        {/* CHAT INPUT BAR */}
+        {/* CHAT INPUT BAR WITH PHOTO MEMORY BUTTON */}
         <form onSubmit={handleSendMessage} className="p-3 bg-black/60 border-t border-white/10 flex items-center gap-2">
           
           {/* Reaction Toggle */}
@@ -465,6 +552,19 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
             title="Reaction Gifts"
           >
             <Smile className="w-5 h-5" />
+          </button>
+
+          {/* 10-Photo Memories Button */}
+          <button
+            type="button"
+            onClick={() => {
+              playSparkle();
+              setShowPhotoPicker(true);
+            }}
+            className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-rose-400 hover:text-white transition-all"
+            title="Share up to 10 Memory Photos"
+          >
+            <Camera className="w-5 h-5" />
           </button>
 
           <input
