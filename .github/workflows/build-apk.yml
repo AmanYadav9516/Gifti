@@ -8,6 +8,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build-android:
     runs-on: ubuntu-latest
@@ -67,8 +70,35 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
+      - name: Prepare Direct APK File
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk Gifti.apk
+
       - name: Upload APK to GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Gifti-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: Gifti.apk
+
+      - name: Publish Direct .APK to GitHub Release (No ZIP, 1-Click Download)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v3.1.0
+          name: "Gifti V3.1.0 - Official Android APK (Direct Download)"
+          body: |
+            ## 🎁 Gifti V3.1 - Direct Android APK
+            
+            **Direct Download Link (No ZIP, No Login Needed):**
+            👉 **[Download Gifti.apk](https://github.com/AmanYadav9516/Gifti/releases/download/v3.1.0/Gifti.apk)**
+            
+            ### ✨ Features Included:
+            - 🔔 1-Tap Notifications & Floating In-App Chime Toast
+            - 📱 Android Phone Hardware Back Button Popstate Support
+            - 🫰 2-Way Real-time Typing Disguise & GIFTU Magic Unbox Reveal
+            - 📸 10-Photo 3D Flying Air Chat Memories (24h Auto-Clean)
+            - 🎴 Holographic Matte VIP Identity Card with Direct Gallery Save
+            - 👤 Instagram-style Public Profiles with Bio & Follow System
+            - 🎨 Chat Themes, Star Rating Feedback & Alphanumeric ID
+          files: Gifti.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
