@@ -96,14 +96,22 @@ export async function getConversationPrivateMode(convId: string): Promise<boolea
   return !!doc?.isPrivate;
 }
 
+let lastTypingTime = 0;
+
 /**
- * REAL-TIME FIRESTORE TYPING STATUS (Synced over internet so both devices see 🫰🫰🫰)
+ * REAL-TIME FIRESTORE TYPING STATUS (Debounced to avoid rapid request flooding)
  */
 export async function setLiveTypingStatus(convId: string, giftiId: string, isTyping: boolean) {
+  const now = Date.now();
+  if (isTyping && now - lastTypingTime < 2000) {
+    return; // Debounce 2 seconds
+  }
+  lastTypingTime = now;
+
   try {
     await firestoreSetDoc('conversation_typing', convId, {
       typingGiftiId: isTyping ? giftiId : '',
-      timestamp: isTyping ? Date.now() : 0,
+      timestamp: isTyping ? now : 0,
     });
   } catch {
     // ignore
@@ -115,7 +123,7 @@ export async function getLiveTypingStatus(convId: string, oppositeGiftiId: strin
     const doc = await firestoreGetDoc('conversation_typing', convId);
     if (!doc) return false;
     const isTarget = String(doc.typingGiftiId || '').toLowerCase() === oppositeGiftiId.toLowerCase();
-    const isRecent = Date.now() - Number(doc.timestamp || 0) < 5000; // 5 seconds window
+    const isRecent = Date.now() - Number(doc.timestamp || 0) < 6000; // 6 seconds window
     return isTarget && isRecent;
   } catch {
     return false;
@@ -153,6 +161,32 @@ export async function fetchConversationMessages(convId: string): Promise<ChatMes
   }
 
   return validMessages.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+/**
+ * Checks for incoming messages for a specific user to trigger in-app notifications
+ */
+export async function checkIncomingMessagesForUser(myGiftiId: string, sinceTimestamp: number): Promise<ChatMessage[]> {
+  try {
+    const allDocs = await firestoreQueryCollection('chat_messages');
+    const incoming: ChatMessage[] = [];
+    const cleanMyId = myGiftiId.toLowerCase();
+
+    for (const doc of allDocs) {
+      const msg = doc as unknown as ChatMessage;
+      if (
+        msg.receiverGiftiId &&
+        msg.receiverGiftiId.toLowerCase() === cleanMyId &&
+        msg.createdAt > sinceTimestamp &&
+        msg.senderGiftiId.toLowerCase() !== cleanMyId
+      ) {
+        incoming.push(msg);
+      }
+    }
+    return incoming;
+  } catch {
+    return [];
+  }
 }
 
 function saveLocalMessage(msg: ChatMessage) {

@@ -6,8 +6,11 @@ const API_KEY = import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyB6qHkmuIGZUYH-2G
 
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
+/**
+ * Direct PATCH (Upsert): Creates if not exists, updates if exists in 1 single HTTP request
+ */
 export async function firestoreSetDoc(collection: string, docId: string, data: Record<string, unknown>): Promise<boolean> {
-  const url = `${FIRESTORE_BASE}/${collection}?documentId=${docId}&key=${API_KEY}`;
+  const url = `${FIRESTORE_BASE}/${collection}/${docId}?key=${API_KEY}`;
   try {
     const fields: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(data)) {
@@ -26,21 +29,10 @@ export async function firestoreSetDoc(collection: string, docId: string, data: R
     }
 
     const res = await fetch(url, {
-      method: 'POST',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields }),
     });
-
-    if (!res.ok && res.status === 409) {
-      // Document already exists, patch it
-      const patchUrl = `${FIRESTORE_BASE}/${collection}/${docId}?key=${API_KEY}`;
-      const patchRes = await fetch(patchUrl, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields }),
-      });
-      return patchRes.ok;
-    }
 
     return res.ok;
   } catch (err) {

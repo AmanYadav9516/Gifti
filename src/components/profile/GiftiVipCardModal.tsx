@@ -13,7 +13,7 @@ import {
   Crown,
   Heart,
   QrCode,
-  ShieldCheck,
+  Share2,
 } from 'lucide-react';
 
 interface GiftiVipCardModalProps {
@@ -45,7 +45,7 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
     setIsFlipped(!isFlipped);
   };
 
-  const handleDownloadCard = () => {
+  const handleDownloadCard = async () => {
     setDownloading(true);
     playUnbox();
 
@@ -62,21 +62,21 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
 
       // 1. Dark Luxury Matte Gradient Background
       const grad = ctx.createLinearGradient(0, 0, 1080, 1600);
-      grad.addColorStop(0, '#160926');
-      grad.addColorStop(0.5, '#0B0414');
-      grad.addColorStop(1, '#040108');
+      grad.addColorStop(0, '#1A0B2E');
+      grad.addColorStop(0.5, '#0E051C');
+      grad.addColorStop(1, '#05020B');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, 1080, 1600);
 
-      // Matte Grain Overlay
+      // Matte Texture Grid
       ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
-      for (let i = 0; i < 1600; i += 8) {
+      for (let i = 0; i < 1600; i += 10) {
         ctx.fillRect(0, i, 1080, 2);
       }
 
       // 2. Double Neon & Metallic Gold Border
       ctx.strokeStyle = '#FF4D6D';
-      ctx.lineWidth = 14;
+      ctx.lineWidth = 16;
       ctx.strokeRect(40, 40, 1000, 1520);
 
       ctx.strokeStyle = '#FFD700';
@@ -85,7 +85,7 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
 
       // 3. Header Branding
       ctx.fillStyle = '#FFE27A';
-      ctx.font = 'bold 36px sans-serif';
+      ctx.font = 'bold 38px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('GIFTI • OFFICIAL VIP IDENTITY CARD', 540, 140);
 
@@ -99,22 +99,23 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
       ctx.fillText(user.name, 540, 480);
 
       ctx.fillStyle = '#FFD700';
-      ctx.font = 'bold 40px monospace';
+      ctx.font = 'bold 42px monospace';
       ctx.fillText(`@${user.giftiId}`, 540, 550);
 
       if (user.bio) {
         ctx.fillStyle = '#E2E8F0';
-        ctx.font = 'italic 26px sans-serif';
-        ctx.fillText(`"${user.bio.slice(0, 60)}"`, 540, 610);
+        ctx.font = 'italic 28px sans-serif';
+        ctx.fillText(`"${user.bio.slice(0, 50)}"`, 540, 610);
       }
 
       ctx.fillStyle = '#94A3B8';
       ctx.font = '28px sans-serif';
       ctx.fillText(`📍 ${user.city || 'India'}  •  VIP Member of Gifti World`, 540, 670);
 
-      const triggerSave = () => {
+      const finishAndExport = () => {
         ctx.fillStyle = '#FFE27A';
         ctx.font = 'bold 28px sans-serif';
+        ctx.textAlign = 'center';
         ctx.fillText('SCAN TO JOIN & CONNECT ON GIFTI', 540, 1200);
 
         ctx.fillStyle = '#CBD5E1';
@@ -125,17 +126,37 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
         ctx.font = 'bold 22px sans-serif';
         ctx.fillText('100% PRIVATE & ENCRYPTED SOCIAL NETWORK', 540, 1440);
 
-        const dataUrl = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = `GIFTI_VIP_CARD_${user.giftiId}.png`;
-        link.href = dataUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            setDownloading(false);
+            return;
+          }
 
-        setDownloading(false);
-        setDownloadSuccess(true);
-        setTimeout(() => setDownloadSuccess(false), 3000);
+          const fileUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = `GIFTI_VIP_CARD_${user.giftiId}.png`;
+          link.href = fileUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // If mobile share is supported, offer direct share
+          if (navigator.canShare && navigator.canShare({ files: [new File([blob], 'gifti_card.png', { type: 'image/png' })] })) {
+            try {
+              navigator.share({
+                title: 'My Gifti VIP Card',
+                text: `Connect with me on Gifti @${user.giftiId}`,
+                files: [new File([blob], `GIFTI_VIP_CARD_${user.giftiId}.png`, { type: 'image/png' })],
+              });
+            } catch {
+              // ignore
+            }
+          }
+
+          setDownloading(false);
+          setDownloadSuccess(true);
+          setTimeout(() => setDownloadSuccess(false), 3000);
+        }, 'image/png');
       };
 
       // Draw QR Code if available
@@ -144,17 +165,21 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
         img.crossOrigin = 'anonymous';
         img.src = qrCodeUrl;
         img.onload = () => {
-          ctx.drawImage(img, 365, 780, 350, 350);
-          triggerSave();
+          try {
+            ctx.drawImage(img, 365, 780, 350, 350);
+          } catch {
+            // ignore
+          }
+          finishAndExport();
         };
         img.onerror = () => {
-          triggerSave();
+          finishAndExport();
         };
       } else {
-        triggerSave();
+        finishAndExport();
       }
     } catch (err) {
-      console.warn('Canvas export fallback:', err);
+      console.warn('Canvas export error:', err);
       setDownloading(false);
     }
   };
@@ -319,7 +344,7 @@ export const GiftiVipCardModal: React.FC<GiftiVipCardModalProps> = ({ user, onCl
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                <span>{downloading ? 'Exporting HD Card...' : 'Download Card (PNG)'}</span>
+                <span>{downloading ? 'Saving Card...' : 'Save Card to Gallery'}</span>
               </>
             )}
           </button>

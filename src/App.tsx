@@ -29,10 +29,13 @@ import { ShareModal } from './components/creator/ShareModal';
 import { GiftJourney } from './components/receiver/GiftJourney';
 import { loadGiftFromCurrentUrl } from './services/shareService';
 import { getCachedCurrentUser, isUserBirthdayToday, clearUserSession } from './services/authService';
+import { checkIncomingMessagesForUser } from './services/chatService';
 import {
   initDailyCareScheduler,
   registerInAppToastListener,
   unregisterInAppToastListener,
+  showChatMessageNotification,
+  showGiftReceivedNotification,
 } from './services/notificationService';
 import {
   Sparkles,
@@ -111,13 +114,36 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // REAL-TIME INCOMING MESSAGE & GIFT NOTIFICATION LISTENER
+  useEffect(() => {
+    if (!currentUser?.giftiId) return;
+
+    let lastChecked = Date.now() - 5000;
+    const interval = setInterval(async () => {
+      const incoming = await checkIncomingMessagesForUser(currentUser.giftiId, lastChecked);
+      lastChecked = Date.now();
+
+      if (incoming.length > 0) {
+        for (const msg of incoming) {
+          // If not currently in chat with this user, trigger notification
+          if (!activeChatTarget || activeChatTarget.giftiId.toLowerCase() !== msg.senderGiftiId.toLowerCase()) {
+            showChatMessageNotification(
+              msg.senderName,
+              msg.photos?.length ? `📸 Sent ${msg.photos.length} 3D Memory Photos ✨` : msg.text
+            );
+          }
+        }
+      }
+    }, 6000); // Check every 6 seconds
+
+    return () => clearInterval(interval);
+  }, [currentUser?.giftiId, activeChatTarget]);
+
   // ANDROID PHONE HARDWARE BACK BUTTON / BROWSER POPSTATE HANDLER
   useEffect(() => {
-    // Push an initial history state
     window.history.pushState({ page: 'root' }, '');
 
     const handlePopState = () => {
-      // Check if any modal is open and close it first
       if (selectedVipUser) {
         setSelectedVipUser(null);
         window.history.pushState({ page: 'root' }, '');

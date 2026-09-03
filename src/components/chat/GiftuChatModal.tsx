@@ -76,6 +76,16 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
   const [showReactionsBar, setShowReactionsBar] = useState(false);
   const [activeVfx, setActiveVfx] = useState<ReactionType | null>(null);
 
+  // Unboxed messages cache (Receiver side emoji disguise)
+  const [unboxedMsgIds, setUnboxedMsgIds] = useState<Set<string>>(() => {
+    try {
+      const raw = sessionStorage.getItem(`unboxed_${conversationId}`);
+      return raw ? new Set(JSON.parse(raw)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
+
   // Photo Memories Modal States
   const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [viewingMemoryPhotos, setViewingMemoryPhotos] = useState<string[] | null>(null);
@@ -151,6 +161,38 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
       photos
     );
     setMessages((prev) => [...prev, sent]);
+  };
+
+  // Unbox a disguised magic message on receiver's end
+  const handleUnboxDisguisedMessage = (msg: ChatMessage) => {
+    playSparkle();
+    setIsAnimatingGiftu(true);
+    setAnimatingMsgText(msg.text);
+    setGiftuStage('wand_rotate');
+
+    setTimeout(() => {
+      setGiftuStage('burst_reveal');
+      playUnbox();
+      confetti({
+        particleCount: 70,
+        spread: 65,
+        origin: { y: 0.5 },
+        colors: ['#FFD700', '#FF4D6D', '#38BDF8'],
+      });
+    }, 1200);
+
+    setTimeout(() => {
+      setIsAnimatingGiftu(false);
+      setGiftuStage('idle');
+      const updated = new Set(unboxedMsgIds);
+      updated.add(msg.id);
+      setUnboxedMsgIds(updated);
+      try {
+        sessionStorage.setItem(`unboxed_${conversationId}`, JSON.stringify(Array.from(updated)));
+      } catch {
+        // ignore
+      }
+    }, 2200);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -370,13 +412,14 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
               </div>
               <p className="text-sm font-bold text-white">Start your GIFTU magical conversation!</p>
               <p className="text-xs max-w-xs text-gray-400">
-                Messages transform with 3D flying words and reveal with fireworks!
+                Messages transform with 3D flying words, disguised emojis, and reveal with fireworks!
               </p>
             </div>
           ) : (
             messages.map((m) => {
               const isMe = m.senderGiftiId === currentUser.giftiId;
               const hasPhotos = m.photos && m.photos.length > 0;
+              const isDisguised = !isMe && m.mode === 'magic' && !unboxedMsgIds.has(m.id);
 
               return (
                 <div
@@ -412,6 +455,20 @@ export const GiftuChatModal: React.FC<GiftuChatModalProps> = ({
                           <Sparkles className="w-3 h-3" />
                           <span>Tap to Open 3D Memory Showcase 📸</span>
                         </p>
+                      </div>
+                    ) : isDisguised ? (
+                      /* DISGUISED EMOJI MYSTERY BOX FOR RECEIVER */
+                      <div
+                        onClick={() => handleUnboxDisguisedMessage(m)}
+                        className="cursor-pointer p-2.5 rounded-xl bg-purple-950/70 border border-amber-400/60 shadow-lg space-y-2 text-center group hover:scale-[1.02] transition-all"
+                      >
+                        <div className="text-xl animate-bounce">
+                          🫰 🫰 🫰 🫰 🫰 🫰 🫰
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-black font-extrabold text-[11px] shadow">
+                          <Wand2 className="w-3.5 h-3.5" />
+                          <span>Tap to Unbox GIFTU Magic 🪄</span>
+                        </div>
                       </div>
                     ) : (
                       <p className="font-medium">{m.text}</p>
